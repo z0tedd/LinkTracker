@@ -1,3 +1,5 @@
-module github.com/es-debug/backend-academy-2024-go-template
+module github.com/central-university-dev/go-z0tedd
 
 go 1.23.2
+
+require github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
