@@ -1,0 +1,245 @@
+openapi: 3.0.3
+info:
+  title: GitHub Data Scraper API
+  description: API для взаимодействия с GitHub REST API
+  version: 1.0.0
+servers:
+  - url: https://api.github.com
+    description: Базовый URL GitHub API
+tags:
+  - name: Users
+    description: Операции с пользователями
+  - name: Repositories
+    description: Операции с репозиториями
+
+paths:
+  /users/{username}:
+    get:
+      tags:
+        - Users
+      summary: Получить информацию о пользователе
+      parameters:
+        - $ref: "#/components/parameters/usernameParam"
+      responses:
+        "200":
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Пользователь не найден
+
+  /users/{username}/repos:
+    get:
+      tags:
+        - Users
+      summary: Получить репозитории пользователя
+      parameters:
+        - $ref: "#/components/parameters/usernameParam"
+      responses:
+        "200":
+          description: Список репозиториев
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Repository"
+        "404":
+          description: Пользователь не найден
+
+  /repos/{owner}/{repo}:
+    get:
+      tags:
+        - Repositories
+      summary: Получить детали репозитория
+      parameters:
+        - $ref: "#/components/parameters/ownerParam"
+        - $ref: "#/components/parameters/repoParam"
+      responses:
+        "200":
+          description: Информация о репозитории
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repository"
+        "404":
+          description: Репозиторий не найден
+
+  /repos/{owner}/{repo}/commits:
+    get:
+      tags:
+        - Repositories
+      summary: Получить коммиты репозитория
+      parameters:
+        - $ref: "#/components/parameters/ownerParam"
+        - $ref: "#/components/parameters/repoParam"
+      responses:
+        "200":
+          description: Список коммитов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Commit"
+        "404":
+          description: Репозиторий не найден
+
+  /repos/{owner}/{repo}/activity:
+    get:
+      tags:
+        - Repositories
+      summary: Получить активность репозитория
+      parameters:
+        - $ref: "#/components/parameters/ownerParam"
+        - $ref: "#/components/parameters/repoParam"
+      responses:
+        "200":
+          description: Список событий активности
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+        "404":
+          description: Репозиторий не найден
+
+components:
+  parameters:
+    usernameParam:
+      name: username
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Имя пользователя GitHub
+    ownerParam:
+      name: owner
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Владелец репозитория
+    repoParam:
+      name: repo
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Название репозитория
+
+  schemas:
+    User:
+      type: object
+      properties:
+        login:
+          type: string
+          example: octocat
+        id:
+          type: integer
+          example: 1
+        avatar_url:
+          type: string
+          format: uri
+          example: https://avatars.githubusercontent.com/u/1?v=4
+        html_url:
+          type: string
+          format: uri
+          example: https://github.com/octocat
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Repository:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Hello-World
+        full_name:
+          type: string
+          example: octocat/Hello-World
+        description:
+          type: string
+          example: My first repository
+        html_url:
+          type: string
+          format: uri
+          example: https://github.com/octocat/Hello-World
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        owner:
+          $ref: "#/components/schemas/User"
+
+    Commit:
+      type: object
+      properties:
+        sha:
+          type: string
+          example: 6dcb09b5b57875f334f61aebed695e2e4193db5e
+        commit:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Fix bug
+            author:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Monalisa Octocat
+                date:
+                  type: string
+                  format: date-time
+            committer:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Monalisa Octocat
+                date:
+                  type: string
+                  format: date-time
+            url:
+              type: string
+
+    ActivityEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 12345
+        activity_type:
+          type: string
+          example: PushEvent
+        actor:
+          $ref: "#/components/schemas/User"
+        timestamp:
+          type: string
+          format: date-time
+        before:
+          type: string
+          example: 6dcb09b5b57875f334f61aebed695e2e4193db5e
+        after:
+          type: string
+          example: 9d304e89ca1ba8ab3d67a572174d34b7c9a5e533
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

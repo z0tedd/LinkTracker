@@ -3,3 +3,22 @@ filename: "{{.InterfaceName | snakecase}}.go"
 mockname: "{{.InterfaceName | firstUpper}}"
 outpkg: mocks
 packages:
+  # github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/client:
+  #   config:
+  #     dir: pkg/mocks
+  #   interfaces:
+  #     ClientWithResponsesInterface:
+
+  github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/github:
+    config:
+      dir: pkg/mocks/github
+      outpkg: mockGithub
+    interfaces:
+      ClientWithResponsesInterface:
+
+  github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/stackoverflow:
+    config:
+      dir: pkg/mocks/stackoverflow
+      outpkg: mockStackOverflow
+    interfaces:
+      ClientWithResponsesInterface:

@@ -1,12 +1,51 @@
-openapi: 3.0.2
+openapi: 3.0.3
 info:
   title: Stack Exchange API - Questions Answers
-  description: API to retrieve answers for a set of questions on Stack Exchange.
+  description: API to retrieve info on Stack Exchange/Stack overflow.
   version: 1.0.0
 servers:
   - url: https://api.stackexchange.com/2.3
     description: Production server for Stack Exchange API
 paths:
+  /questions/{ids}:
+    get:
+      summary: Fetch questions by their IDs
+      description: Returns the questions identified by the given IDs. Useful for fetching fresh data or polling for changes.
+      operationId: getQuestionsByIds
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - $ref: "#/components/parameters/OrderParam"
+        - $ref: "#/components/parameters/SortParam"
+        - $ref: "#/components/parameters/SiteParam"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PagesizeParam"
+        - $ref: "#/components/parameters/FromDateParam"
+        - $ref: "#/components/parameters/ToDateParam"
+        - $ref: "#/components/parameters/MinParam"
+        - $ref: "#/components/parameters/MaxParam"
+      responses:
+        "200":
+          description: A JSON object containing the list of questions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Question"
+                  has_more:
+                    type: boolean
+                  quota_max:
+                    type: integer
+                  quota_remaining:
+                    type: integer
+        "400":
+          description: Bad request. Invalid parameters provided.
+        "404":
+          description: Not found. The requested resource could not be located.
+
   /questions/{ids}/answers:
     get:
       summary: Get answers for a set of questions
@@ -34,12 +73,19 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Answer"
+                  has_more:
+                    type: boolean
+                  quota_max:
+                    type: integer
+                  quota_remaining:
+                    type: integer
         "400":
           description: Bad request due to invalid parameters.
         "404":
           description: No answers found for the specified question IDs.
         "500":
           description: Internal server error.
+
 components:
   parameters:
     IdParam:
@@ -74,6 +120,8 @@ components:
       required: true
       schema:
         type: string
+        default: stackoverflow
+        enum: [stackoverflow, stackexchange]
     PageParam:
       name: page
       in: query
@@ -143,20 +191,61 @@ components:
           type: integer
         content_license:
           type: string
+    Question:
+      type: object
+      properties:
+        tags:
+          type: array
+          items:
+            type: string
+        owner:
+          $ref: "#/components/schemas/User"
+        is_answered:
+          type: boolean
+        view_count:
+          type: integer
+        protected_date:
+          type: integer
+        closed_date:
+          type: integer
+        accepted_answer_id:
+          type: integer
+        answer_count:
+          type: integer
+        score:
+          type: integer
+        last_edit_date:
+          type: integer
+        last_activity_date:
+          type: integer
+        creation_date:
+          type: integer
+        question_id:
+          type: integer
+        link:
+          type: string
+        closed_reason:
+          type: string
+        title:
+          type: string
+        content_license:
+          type: string
     User:
       type: object
       properties:
+        accept_rate:
+          type: integer
         account_id:
           type: integer
+        display_name:
+          type: string
+        link:
+          type: string
+        profile_image:
+          type: string
         reputation:
           type: integer
         user_id:
           type: integer
         user_type:
-          type: string
-        profile_image:
-          type: string
-        display_name:
-          type: string
-        link:
           type: string
