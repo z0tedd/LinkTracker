@@ -14,10 +14,6 @@ import (
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
 )
 
-func doSomething() {
-	fmt.Println("I have done something!")
-}
-
 func checkSubscriptions(ctx context.Context, subs map[*domain.Subscription][]int64) ([]*domain.Subscription, error) {
 	var updatedSubscriptions []*domain.Subscription
 

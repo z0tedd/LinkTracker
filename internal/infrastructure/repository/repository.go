@@ -2,6 +2,7 @@ package repository
 
 import (
 	"log/slog"
+	"slices"
 	"sync"
 
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
@@ -83,6 +84,7 @@ func (r *InMemoryRepository) GetState(userID int64) string {
 	if user, exists := r.users[userID]; exists {
 		return user.State
 	}
+
 	return ""
 }
 
@@ -156,6 +158,7 @@ func (r *InMemoryRepository) GetTags(userID int64) *[]string {
 		lastIndex := len(subs) - 1
 		return &r.subscribers[userID][lastIndex].Tags
 	}
+
 	return nil
 }
 
@@ -191,7 +194,7 @@ func (r *InMemoryRepository) RemoveSubscription(userID int64, link string) bool 
 	if subs, exists := r.subscribers[userID]; exists {
 		for i, sub := range subs {
 			if sub.Link == link {
-				r.subscribers[userID] = append(subs[:i], subs[i+1:]...)
+				r.subscribers[userID] = slices.Delete(subs, i, i+1)
 				r.logger.Info("Subscription removed for user", "user_id", userID, "link", link)
 
 				return true

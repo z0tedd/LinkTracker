@@ -23,14 +23,10 @@ func helpMessage() string {
   `
 }
 
-// handlers:
-//
-//	/start
-//	/help
-//	/track
-//	/untrack
-//	/list
-func HandleUpdate(bot *tgbotapi.BotAPI, update *tgbotapi.Update, apiClient *client.Client, repo repository.Repository, logger *slog.Logger) {
+func HandleUpdate(bot *tgbotapi.BotAPI,
+	update *tgbotapi.Update, apiClient *client.Client,
+	repo repository.Repository, logger *slog.Logger,
+) {
 	if update.Message == nil {
 		return
 	}
@@ -40,227 +36,187 @@ func HandleUpdate(bot *tgbotapi.BotAPI, update *tgbotapi.Update, apiClient *clie
 
 	switch msg.Text {
 	case "/start":
-		// Register user by sending a POST request to /tg-chat/{id}
-		ctx := context.Background()
-		resp, err := apiClient.PostTgChatId(ctx, userID)
-
-		repo.RegisterUser(userID)
-
-		if err != nil {
-			logger.Warn("User registration", slog.Any("error", err.Error()))
-
-			err = helpers.SendMessage(bot, userID, fmt.Sprintf("Ошибка при регистрации пользователя: %s", err.Error()))
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-
-			return
-		}
-
-		defer resp.Body.Close()
-
-		if resp.StatusCode == 201 {
-			err = helpers.SendMessage(bot, userID, "Вы успешно зарегистрированы!")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-		} else {
-			logger.Warn("User registration. Response status code isn't 201", slog.Any("error", resp.StatusCode))
-
-			err = helpers.SendMessage(bot, userID, "Ошибка при регистрации пользователя.")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-		}
-
+		handleStartCommand(bot, userID, apiClient, repo, logger)
 	case "/help":
-		err := helpers.SendMessage(bot, userID, helpMessage())
-		if err != nil {
-			logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-		}
-
+		handleHelpCommand(bot, userID, logger)
 	case "/track":
-		repo.SetState(userID, "waiting_for_link")
-
-		err := helpers.SendMessage(bot, userID, "Введите ссылку для отслеживания:")
-		if err != nil {
-			logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-		}
-
+		handleTrackCommand(bot, userID, repo, logger)
 	case "/untrack":
-		repo.SetState(userID, "waiting_for_untrack_link")
-
-		err := helpers.SendMessage(bot, userID, "Введите ссылку для удаления из отслеживания:")
-		if err != nil {
-			logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-		}
-
+		handleUntrackCommand(bot, userID, repo, logger)
 	case "/list":
-		// Fetch subscriptions by sending a GET request to /links
-		ctx := context.Background()
-		params := client.GetLinksParams{TgChatId: userID}
-
-		resp, err := apiClient.GetLinks(ctx, &params)
-		if err != nil {
-			err = helpers.SendMessage(bot, userID, "Ошибка при получении списка подписок.")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-
-			return
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			err := helpers.SendMessage(bot, userID, "Ошибка при получении списка подписок.")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-
-			return
-		}
-
-		var listResponse client.ListLinksResponse
-		if err := json.NewDecoder(resp.Body).Decode(&listResponse); err != nil {
-			err = helpers.SendMessage(bot, userID, "Ошибка при обработке данных.")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-
-			return
-		}
-
-		subscriptions := formatSubscriptionsFromResponse(listResponse, logger)
-
-		err = helpers.SendMessage(bot, userID, subscriptions)
-		if err != nil {
-			logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-		}
-
+		handleListCommand(bot, userID, apiClient, logger)
 	default:
 		handleStateMachine(bot, userID, msg.Text, apiClient, repo, logger)
 	}
 }
 
-// handleStateMachine обрабатывает диалоговое взаимодействие.
-func handleStateMachine(bot *tgbotapi.BotAPI, userID int64, text string, apiClient *client.Client, repo repository.Repository, logger *slog.Logger) {
+// handleStartCommand handles the /start command.
+func handleStartCommand(bot *tgbotapi.BotAPI, userID int64, apiClient *client.Client, repo repository.Repository, logger *slog.Logger) {
+	ctx := context.Background()
+	resp, err := apiClient.PostTgChatId(ctx, userID)
+
+	repo.RegisterUser(userID)
+
+	if err != nil {
+		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Ошибка при регистрации пользователя: %s", err.Error()))
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 201 {
+		logAndSendMessage(bot, userID, logger, "Вы успешно зарегистрированы!")
+	} else {
+		logAndSendMessage(bot, userID, logger, "Ошибка при регистрации пользователя.")
+		logger.Warn("User registration. Response status code isn't 201", slog.Any("error", resp.StatusCode))
+	}
+}
+
+// handleHelpCommand handles the /help command.
+func handleHelpCommand(bot *tgbotapi.BotAPI, userID int64, logger *slog.Logger) {
+	logAndSendMessage(bot, userID, logger, helpMessage())
+}
+
+// handleTrackCommand handles the /track command.
+func handleTrackCommand(bot *tgbotapi.BotAPI, userID int64, repo repository.Repository, logger *slog.Logger) {
+	repo.SetState(userID, "waiting_for_link")
+	logAndSendMessage(bot, userID, logger, "Введите ссылку для отслеживания:")
+}
+
+// handleUntrackCommand handles the /untrack command.
+func handleUntrackCommand(bot *tgbotapi.BotAPI, userID int64, repo repository.Repository, logger *slog.Logger) {
+	repo.SetState(userID, "waiting_for_untrack_link")
+	logAndSendMessage(bot, userID, logger, "Введите ссылку для удаления из отслеживания:")
+}
+
+// handleListCommand handles the /list command.
+func handleListCommand(bot *tgbotapi.BotAPI, userID int64, apiClient *client.Client, logger *slog.Logger) {
+	ctx := context.Background()
+	params := client.GetLinksParams{TgChatId: userID}
+
+	resp, err := apiClient.GetLinks(ctx, &params)
+	if err != nil || resp.StatusCode != 200 {
+		logAndSendMessage(bot, userID, logger, "Ошибка при получении списка подписок.")
+		return
+	}
+	defer resp.Body.Close()
+
+	var listResponse client.ListLinksResponse
+	if err := json.NewDecoder(resp.Body).Decode(&listResponse); err != nil {
+		logAndSendMessage(bot, userID, logger, "Ошибка при обработке данных.")
+		return
+	}
+
+	subscriptions := formatSubscriptionsFromResponse(listResponse, logger)
+	logAndSendMessage(bot, userID, logger, subscriptions)
+}
+
+// logAndSendMessage logs an error and sends a message to the user.
+func logAndSendMessage(bot *tgbotapi.BotAPI, userID int64, logger *slog.Logger, message string) {
+	err := helpers.SendMessage(bot, userID, message)
+	if err != nil {
+		logger.Error("Sending message to telegram", slog.Any("error", err.Error()))
+	}
+}
+
+// handleStateMachine processes state-based interactions.
+func handleStateMachine(bot *tgbotapi.BotAPI, userID int64,
+	text string, apiClient *client.Client,
+	repo repository.Repository, logger *slog.Logger,
+) {
 	state := repo.GetState(userID)
 
 	switch state {
 	case "waiting_for_link":
-		link := text
-		repo.AddSubscription(userID, link)
-
-		if !helpers.IsValidURL(link) {
-			err := helpers.SendMessage(bot, userID, "Неверный формат ссылки. Попробуйте снова.")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-
-			return
-		}
-
-		if !helpers.IsSupported(link) {
-			err := helpers.SendMessage(bot, userID, "На данный момент поддерживаются репозитории Github и вопросы с StackOverflow.")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-
-			return
-		}
-
-		repo.SetState(userID, "waiting_for_tags")
-
-		err := helpers.SendMessage(bot, userID, "Введите теги (через пробел, опционально):")
-		if err != nil {
-			logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-		}
-
+		handleWaitingForLink(bot, userID, text, repo, logger)
 	case "waiting_for_tags":
-		tags := strings.Fields(text)
-		repo.SetTags(userID, tags)
-		repo.SetState(userID, "waiting_for_filters")
-
-		err := helpers.SendMessage(bot, userID, "Настройте фильтры (формат: user:<username> type:<type>, опционально):")
-		if err != nil {
-			logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-		}
-
+		handleWaitingForTags(bot, userID, text, repo, logger)
 	case "waiting_for_filters":
-		filters := parseFilters(text)
-		// Add subscription by sending a POST request to /links
-		ctx := context.Background()
-		params := client.PostLinksParams{TgChatId: userID}
-		body := client.PostLinksJSONRequestBody{
-			Filters: &filters,
-			Link:    &repo.GetUsersWithSubs()[userID][len(repo.GetUsersWithSubs()[userID])-1].Link,
-			Tags:    repo.GetTags(userID),
-		}
-
-		resp, err := apiClient.PostLinks(ctx, &params, body)
-		if err != nil {
-			err := helpers.SendMessage(bot, userID, fmt.Sprintf("Ошибка при создании подписки:  %s", err.Error()))
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-
-			return
-		}
-
-		defer resp.Body.Close()
-
-		if resp.StatusCode == 201 {
-			repo.SetState(userID, "")
-
-			err := helpers.SendMessage(bot, userID, "Подписка успешно создана!")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-		} else {
-			err := helpers.SendMessage(bot, userID, "Ошибка при создании подписки: Статус код не 201")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-		}
-
+		handleWaitingForFilters(bot, userID, text, apiClient, repo, logger)
 	case "waiting_for_untrack_link":
-		link := text
-		// Remove subscription by sending a DELETE request to /links
-		ctx := context.Background()
-		params := client.DeleteLinksParams{TgChatId: userID, Link: link}
-
-		resp, err := apiClient.DeleteLinks(ctx, &params)
-		if err != nil {
-			err := helpers.SendMessage(bot, userID, "Ошибка при удалении подписки.")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-
-			return
-		}
-
-		defer resp.Body.Close()
-
-		if resp.StatusCode == 200 {
-			err := helpers.SendMessage(bot, userID, "Подписка успешно удалена.")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-		} else {
-			err := helpers.SendMessage(bot, userID, "Ссылка не найдена в списке подписок.")
-			if err != nil {
-				logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-			}
-		}
-
-		repo.SetState(userID, "")
-
+		handleWaitingForUntrackLink(bot, userID, text, apiClient, repo, logger)
 	default:
-		err := helpers.SendMessage(bot, userID, "Неизвестная команда. Введите /help для справки.")
-		if err != nil {
-			logger.Warn("Sending message to telegram", slog.Any("error", err.Error()))
-		}
+		logAndSendMessage(bot, userID, logger, "Неизвестная команда. Введите /help для справки.")
 	}
+}
+
+// handleWaitingForLink handles the "waiting_for_link" state.
+func handleWaitingForLink(bot *tgbotapi.BotAPI, userID int64, link string, repo repository.Repository, logger *slog.Logger) {
+	repo.AddSubscription(userID, link)
+
+	if !helpers.IsValidURL(link) {
+		logAndSendMessage(bot, userID, logger, "Неверный формат ссылки. Попробуйте снова.")
+		return
+	}
+
+	if !helpers.IsSupported(link) {
+		logAndSendMessage(bot, userID, logger, "На данный момент поддерживаются репозитории Github и вопросы с StackOverflow.")
+		return
+	}
+
+	repo.SetState(userID, "waiting_for_tags")
+	logAndSendMessage(bot, userID, logger, "Введите теги (через пробел, опционально):")
+}
+
+// handleWaitingForTags handles the "waiting_for_tags" state.
+func handleWaitingForTags(bot *tgbotapi.BotAPI, userID int64, text string, repo repository.Repository, logger *slog.Logger) {
+	tags := strings.Fields(text)
+	repo.SetTags(userID, tags)
+	repo.SetState(userID, "waiting_for_filters")
+	logAndSendMessage(bot, userID, logger, "Настройте фильтры (формат: user:<username> type:<type>, опционально):")
+}
+
+// handleWaitingForFilters handles the "waiting_for_filters" state.
+func handleWaitingForFilters(bot *tgbotapi.BotAPI, userID int64,
+	text string, apiClient *client.Client,
+	repo repository.Repository, logger *slog.Logger,
+) {
+	filters := parseFilters(text)
+	ctx := context.Background()
+	params := client.PostLinksParams{TgChatId: userID}
+	body := client.PostLinksJSONRequestBody{
+		Filters: &filters,
+		Link:    &repo.GetUsersWithSubs()[userID][len(repo.GetUsersWithSubs()[userID])-1].Link,
+		Tags:    repo.GetTags(userID),
+	}
+
+	resp, err := apiClient.PostLinks(ctx, &params, body)
+	if err != nil {
+		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Ошибка при создании подписки: %s", err.Error()))
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 201 {
+		repo.SetState(userID, "")
+		logAndSendMessage(bot, userID, logger, "Подписка успешно создана!")
+	} else {
+		logAndSendMessage(bot, userID, logger, "Ошибка при создании подписки: Статус код не 201")
+	}
+}
+
+// handleWaitingForUntrackLink handles the "waiting_for_untrack_link" state.
+func handleWaitingForUntrackLink(bot *tgbotapi.BotAPI, userID int64,
+	link string, apiClient *client.Client,
+	repo repository.Repository, logger *slog.Logger,
+) {
+	ctx := context.Background()
+	params := client.DeleteLinksParams{TgChatId: userID, Link: link}
+
+	resp, err := apiClient.DeleteLinks(ctx, &params)
+	if err != nil {
+		logAndSendMessage(bot, userID, logger, "Ошибка при удалении подписки.")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 200 {
+		logAndSendMessage(bot, userID, logger, "Подписка успешно удалена.")
+	} else {
+		logAndSendMessage(bot, userID, logger, "Ссылка не найдена в списке подписок.")
+	}
+
+	repo.SetState(userID, "")
 }
 
 // formatSubscriptions форматирует список подписок в удобочитаемый текст.

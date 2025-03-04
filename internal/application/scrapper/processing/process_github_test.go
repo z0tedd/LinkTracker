@@ -33,12 +33,11 @@ func TestGithub(t *testing.T) {
 	t.Run("Successful response but no update required", func(t *testing.T) {
 		// Mock response
 		mockResponse := &client.GetReposOwnerRepoResponse{
-			HTTPResponse: &http.Response{StatusCode: 201},
+			HTTPResponse: &http.Response{StatusCode: 200},
 			JSON200: &client.Repository{
 				UpdatedAt: timePtr(time.Now().Add(-48 * time.Hour)), // Updated 48 hours ago
 			},
 		}
-		t.Log("test 1(Successful): ", mockResponse.HTTPResponse)
 
 		mockClient.EXPECT().
 			GetReposOwnerRepoWithResponse(ctx, "test-owner", "test-repo").
@@ -59,21 +58,35 @@ func TestGithub(t *testing.T) {
 			},
 		}
 
-		t.Log("test 2(Successful): ", mockResponse.HTTPResponse)
-		fmt.Printf("test 2(Successful): %p \n", mockResponse.HTTPResponse)
 		mockClient.EXPECT().
 			GetReposOwnerRepoWithResponse(ctx, "test-owner", "test-repo").
 			Return(mockResponse, nil).Once()
 
-		t.Log("test 2(Successful)2: ", mockResponse.HTTPResponse)
 		// Call the function
 		result := processing.Github(ctx, mockClient, parsedLink, currentSub, updatedSubscriptions)
 
-		t.Log("test 2(Successful)2: ", mockResponse.HTTPResponse)
 		// Assertions
 		assert.Len(t, result, 1)
 
 		assert.Equal(t, currentSub, result[0])
+	})
+
+	t.Run("Nil JSON200 in response", func(t *testing.T) {
+		// Mock response
+		mockResponse := &client.GetReposOwnerRepoResponse{
+			HTTPResponse: &http.Response{StatusCode: 200},
+			JSON200:      nil,
+		}
+
+		mockClient.EXPECT().
+			GetReposOwnerRepoWithResponse(ctx, "test-owner", "test-repo").
+			Return(mockResponse, nil).Once()
+
+		// Call the function
+		result := processing.Github(ctx, mockClient, parsedLink, currentSub, updatedSubscriptions)
+
+		// Assertions
+		assert.Len(t, result, 0)
 	})
 	t.Run("Non-200 status code", func(t *testing.T) {
 		// Mock response
@@ -95,6 +108,18 @@ func TestGithub(t *testing.T) {
 		mockClient.EXPECT().
 			GetReposOwnerRepoWithResponse(ctx, "test-owner", "test-repo").
 			Return(nil, fmt.Errorf("request failed")).Once()
+
+		// Call the function
+		result := processing.Github(ctx, mockClient, parsedLink, currentSub, updatedSubscriptions)
+
+		// Assertions
+		assert.Len(t, result, 0)
+	})
+
+	t.Run("Nil response", func(t *testing.T) {
+		mockClient.EXPECT().
+			GetReposOwnerRepoWithResponse(ctx, "test-owner", "test-repo").
+			Return(nil, nil).Once()
 
 		// Call the function
 		result := processing.Github(ctx, mockClient, parsedLink, currentSub, updatedSubscriptions)

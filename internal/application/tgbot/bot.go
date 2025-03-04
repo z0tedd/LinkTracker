@@ -42,13 +42,13 @@ func (b *TrackingBot) Run() {
 
 	repo := repository.NewInMemoryRepository(b.logger)
 
-	client, err := client.NewClient("http://localhost:8080")
+	clientScrapper, err := client.NewClient("http://localhost:8080")
 	if err != nil {
 		b.logger.Warn("Scrapper client", slog.Any("error", err.Error()))
 	}
 
 	updates := b.botAPI.GetUpdatesChan(updateConfig)
 	for update := range updates {
-		handlers.HandleUpdate(b.botAPI, &update, client, repo, b.logger)
+		handlers.HandleUpdate(b.botAPI, &update, clientScrapper, repo, b.logger)
 	}
 }

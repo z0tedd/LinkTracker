@@ -22,10 +22,10 @@ func SendMessage(bot *tgbotapi.BotAPI, userID int64, text string) error {
 // Функция для проверки строки на соответствие форматам.
 func IsSupported(url string) bool {
 	// Регулярное выражение для формата GitHub
-	githubPattern := `^https://github\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+/.*$`
+	githubPattern := `^https://github\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+(/.*)?$`
 
 	// Регулярное выражение для формата Stack Overflow
-	stackOverflowPattern := `^https://stackoverflow\.com/questions/\d+/.*$`
+	stackOverflowPattern := `^https://stackoverflow\.com/questions/\d+(/.*)?$`
 
 	// Компилируем регулярные выражения
 	githubRegex := regexp.MustCompile(githubPattern)
