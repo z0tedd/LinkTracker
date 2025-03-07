@@ -22,3 +22,24 @@ packages:
       outpkg: mockStackOverflow
     interfaces:
       ClientWithResponsesInterface:
+
+  github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/client:
+    config:
+      dir: pkg/mocks/bot_api/client
+      outpkg: mockBotClient
+    interfaces:
+      ClientWithResponsesInterface:
+
+  github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client:
+    config:
+      dir: pkg/mocks/scrapper/client
+      outpkg: mockScrapperClient
+    interfaces:
+      ClientInterface:
+
+  github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository:
+    config:
+      dir: pkg/mocks/repository
+      outpkg: mockRepository
+    interfaces:
+      Repository:

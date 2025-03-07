@@ -14,6 +14,8 @@ import (
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
 )
 
+var checkSubs = checkSubscriptions
+
 func checkSubscriptions(ctx context.Context, subs map[*domain.Subscription][]int64) ([]*domain.Subscription, error) {
 	var updatedSubscriptions []*domain.Subscription
 
@@ -53,32 +55,40 @@ func CheckLinks(repo repository.Repository, botClient botAPI.ClientWithResponses
 	ctx := context.Background()
 	subscriptionsByUserIDs := repo.GetSubscriptionsByUserIDs()
 
-	updatedSubscriptions, err := checkSubscriptions(ctx, subscriptionsByUserIDs)
+	updatedSubscriptions, err := checkSubs(ctx, subscriptionsByUserIDs)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	for _, v := range updatedSubscriptions {
-		description := fmt.Sprintf("Updated Link, url: %v ", v.Link)
-		tgChatIDs := subscriptionsByUserIDs[v]
-		URL := v.Link
-		body := botAPI.PostUpdatesJSONRequestBody{
-			Description: &description,
-			Id:          nil,
-			TgChatIds:   &tgChatIDs,
-			Url:         &URL,
-		}
-
-		rsp, err := botClient.PostUpdatesWithResponse(ctx, body)
-		if err != nil {
-			log.Println(err, URL)
-			continue
-		}
-
-		if rsp.JSON400 != nil {
-			log.Println("Post response ended with error", rsp.JSON400.Description, rsp.JSON400)
-			continue
+	for _, subscription := range updatedSubscriptions {
+		tgChatIDs := subscriptionsByUserIDs[subscription]
+		if err = processUpdatedSubscription(ctx, botClient, subscription, tgChatIDs); err != nil {
+			log.Println(err, subscription.Link)
 		}
 	}
+}
+
+func processUpdatedSubscription(ctx context.Context, botClient botAPI.ClientWithResponsesInterface,
+	subscription *domain.Subscription, tgChatIDs []int64,
+) error {
+	description := fmt.Sprintf("Updated Link, url: %v", subscription.Link)
+	url := subscription.Link
+	body := botAPI.PostUpdatesJSONRequestBody{
+		Description: &description,
+		Id:          nil,
+		TgChatIds:   &tgChatIDs,
+		Url:         &url,
+	}
+
+	rsp, err := botClient.PostUpdatesWithResponse(ctx, body)
+	if err != nil {
+		return domain.PostUpdatesError{Msg: err.Error()}
+	}
+
+	if rsp.JSON400 != nil && rsp.JSON400.Description != nil {
+		return domain.StatusCode400Error{Msg: fmt.Sprintf("code: 400, description: %s", *rsp.JSON400.Description)}
+	}
+
+	return nil
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client"
 	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/handlers"
-	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/statemanager"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -40,7 +40,7 @@ func (b *TrackingBot) Run() {
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 60
 
-	repo := repository.NewInMemoryRepository(b.logger)
+	states := statemanager.NewInMemoryStateManager()
 
 	clientScrapper, err := client.NewClient("http://localhost:8080")
 	if err != nil {
@@ -49,6 +49,6 @@ func (b *TrackingBot) Run() {
 
 	updates := b.botAPI.GetUpdatesChan(updateConfig)
 	for update := range updates {
-		handlers.HandleUpdate(b.botAPI, &update, clientScrapper, repo, b.logger)
+		handlers.HandleUpdate(b.botAPI, &update, clientScrapper, states, b.logger)
 	}
 }
