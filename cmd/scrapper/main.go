@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 
 	botAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/client"
+	githubAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/github"
 	unimplemented_server "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/server"
+	stackOverflowAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/stackoverflow"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/checker"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/server"
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
@@ -19,19 +22,36 @@ import (
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
+	repo := repository.NewInMemoryRepository(logger)
+
 	botClient, err := botAPI.NewClientWithResponses("http://localhost:8081")
 	if err != nil {
 		logger.ErrorContext(context.Background(), "bot-client startup", slog.Any("error", err.Error()))
 		return
 	}
 
-	repo := repository.NewInMemoryRepository(logger)
+	githubClient, err := githubAPI.NewClientWithResponses("https://api.github.com")
+	if err != nil {
+		log.Print(err.Error())
+
+		logger.ErrorContext(context.Background(), "bot-client startup", slog.Any("error", err.Error()))
+	}
+
+	stackOverflowClient, err := stackOverflowAPI.NewClientWithResponses("https://api.stackexchange.com/2.3")
+	if err != nil {
+		log.Print(err.Error())
+		logger.ErrorContext(context.Background(), "bot-client startup", slog.Any("error", err.Error()))
+	}
+
+	checker := checker.NewChecker(githubClient, stackOverflowClient, botClient)
 
 	scheduler, err := gocron.NewScheduler()
 	if err != nil {
 		logger.ErrorContext(context.Background(), "Scheduler startup", slog.Any("error", err.Error()))
 		return
 	}
+
+	ctx := context.Background()
 
 	defer func() {
 		err := scheduler.Shutdown()
@@ -41,10 +61,9 @@ func main() {
 	}()
 
 	_, err = scheduler.NewJob(
-		gocron.CronJob("0/5 * * * *", false),
-		gocron.NewTask(
-			checker.CheckLinks, repo, botClient),
-	)
+		gocron.CronJob("0/10 * * * *", false),
+		gocron.NewTask(checker.CheckSubscriptions, ctx, repo))
+	// checker.CheckLinks, repo),
 	if err != nil {
 		logger.Error("Exiting app:", slog.Any("error:", err))
 		return

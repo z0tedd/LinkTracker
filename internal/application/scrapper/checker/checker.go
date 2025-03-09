@@ -11,28 +11,39 @@ import (
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/parsing"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/processing"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
-	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
 )
 
-var checkSubs = checkSubscriptions
+// subs map[*domain.Subscription][]int64.
+type Repository interface {
+	GetSubsID() domain.Set
+	GetSubscription(subID int64) (domain.Subscription, error)
+	UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error
+}
+type Checker struct {
+	githubClient        githubAPI.ClientWithResponsesInterface
+	stackOverflowClient stackOverflowAPI.ClientWithResponsesInterface
+	botClient           botAPI.ClientWithResponsesInterface
+}
 
-func checkSubscriptions(ctx context.Context, subs map[*domain.Subscription][]int64) ([]*domain.Subscription, error) {
-	var updatedSubscriptions []*domain.Subscription
+func NewChecker(
+	githubClient githubAPI.ClientWithResponsesInterface,
+	stackOverflowClient stackOverflowAPI.ClientWithResponsesInterface,
+	botClient botAPI.ClientWithResponsesInterface,
+) *Checker {
+	return &Checker{githubClient, stackOverflowClient, botClient}
+}
 
-	githubClient, err := githubAPI.NewClientWithResponses("https://api.github.com")
-	if err != nil {
-		log.Print(err.Error())
-		return nil, err
-	}
+func (c Checker) CheckSubscriptions(ctx context.Context, repo Repository) {
+	log.Print("i am checking!\n")
 
-	stackOverflowClient, err := stackOverflowAPI.NewClientWithResponses("https://api.stackexchange.com/2.3")
-	if err != nil {
-		log.Print(err.Error())
-		return nil, err
-	}
+	for subID := range repo.GetSubsID() {
+		sub, err := repo.GetSubscription(subID)
+		if err != nil {
+			log.Print(err.Error())
+			continue
+		}
 
-	for v := range subs {
-		parsedLink, err := parsing.Link(v.Link)
+		parsedLink, err := parsing.Link(sub.URL)
 		if err != nil {
 			log.Print(err.Error())
 			continue
@@ -40,45 +51,44 @@ func checkSubscriptions(ctx context.Context, subs map[*domain.Subscription][]int
 
 		switch parsedLink["linkHost"] {
 		case "github":
-			updatedSubscriptions = processing.Github(ctx, githubClient, parsedLink, v, updatedSubscriptions)
+			if newActivity, updated := processing.Github(ctx, c.githubClient, parsedLink, subID, repo); updated {
+				err = repo.UpdateSubscriptionActivity(subID, newActivity)
+				if err != nil {
+					log.Print(err.Error())
+					continue
+				}
+			}
 		case "stackoverflow":
-			updatedSubscriptions = processing.StackOverflow(ctx, stackOverflowClient, parsedLink, v, updatedSubscriptions)
+			if newActivity, updated := processing.StackOverflow(ctx, c.stackOverflowClient, parsedLink, subID, repo); updated {
+				err = repo.UpdateSubscriptionActivity(subID, newActivity)
+				if err != nil {
+					log.Print(err.Error())
+					continue
+				}
+			}
 		}
-	}
 
-	return updatedSubscriptions, nil
-}
+		sub, err = repo.GetSubscription(subID)
+		if err != nil {
+			log.Print(err.Error())
+			continue
+		}
 
-func CheckLinks(repo repository.Repository, botClient botAPI.ClientWithResponsesInterface) {
-	log.Println("I am checking!")
-
-	ctx := context.Background()
-	subscriptionsByUserIDs := repo.GetSubscriptionsByUserIDs()
-
-	updatedSubscriptions, err := checkSubs(ctx, subscriptionsByUserIDs)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	for _, subscription := range updatedSubscriptions {
-		tgChatIDs := subscriptionsByUserIDs[subscription]
-		if err = processUpdatedSubscription(ctx, botClient, subscription, tgChatIDs); err != nil {
-			log.Println(err, subscription.Link)
+		err = processUpdatedSubscription(ctx, c.botClient, sub)
+		if err != nil {
+			log.Print(err.Error())
 		}
 	}
 }
 
 func processUpdatedSubscription(ctx context.Context, botClient botAPI.ClientWithResponsesInterface,
-	subscription *domain.Subscription, tgChatIDs []int64,
+	subscription domain.Subscription,
 ) error {
-	description := fmt.Sprintf("Updated Link, url: %v", subscription.Link)
-	url := subscription.Link
 	body := botAPI.PostUpdatesJSONRequestBody{
-		Description: &description,
-		Id:          nil,
-		TgChatIds:   &tgChatIDs,
-		Url:         &url,
+		Description: &subscription.UpdateDescription,
+		Id:          &subscription.ID,
+		TgChatIds:   &subscription.TgChatIDs,
+		Url:         &subscription.URL,
 	}
 
 	rsp, err := botClient.PostUpdatesWithResponse(ctx, body)
@@ -92,3 +102,23 @@ func processUpdatedSubscription(ctx context.Context, botClient botAPI.ClientWith
 
 	return nil
 }
+
+// // CheckLinks Берет
+// func CheckLinks(repo repository.Repository, botClient botAPI.ClientWithResponsesInterface) {
+// 	log.Println("I am checking!")
+//
+// 	ctx := context.Background()
+// 	subscriptionsByUserIDs := repo.GetSubscriptionsByUserIDs()
+//
+// 	updatedSubscriptions, err := checkSubs(ctx, subscriptionsByUserIDs)
+// 	if err != nil {
+// 		log.Println(err)
+// 		return
+// 	}
+//
+// 	for _, subscription := range updatedSubscriptions {
+// 		if err = processUpdatedSubscription(ctx, botClient, subscription); err != nil {
+// 			log.Println(err, subscription.URL)
+// 		}
+// 	}
+// }

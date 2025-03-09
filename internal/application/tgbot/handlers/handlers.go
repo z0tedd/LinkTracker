@@ -40,8 +40,11 @@ type StateManager interface {
 	GetData(chatID int64, key string) any
 }
 
-func HandleUpdate(bot *tgbotapi.BotAPI,
-	update *tgbotapi.Update, apiClient *client.Client, states StateManager,
+func HandleUpdate(
+	bot *tgbotapi.BotAPI,
+	update *tgbotapi.Update,
+	apiClient *client.Client,
+	states StateManager,
 	logger *slog.Logger,
 ) {
 	if update.Message == nil {
@@ -74,15 +77,18 @@ func handleStartCommand(bot *tgbotapi.BotAPI, userID int64, apiClient *client.Cl
 	resp, err := apiClient.PostTgChatId(ctx, userID)
 	if err != nil {
 		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Ошибка при регистрации пользователя: %s", err.Error()))
+		logger.Warn("Failed to register user", slog.Any("error", err))
+
 		return
 	}
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 201 {
+	if resp.StatusCode == http.StatusCreated {
 		logAndSendMessage(bot, userID, logger, "Вы успешно зарегистрированы!")
+		logger.Debug("User registered", slog.Any("userID", userID))
 	} else {
-		logAndSendMessage(bot, userID, logger, "Ошибка при регистрации пользователя.")
+		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Ошибка при регистрации пользователя: %s", resp.Status))
 		logger.Warn("User registration. Response status code isn't 201", slog.Any("error", resp.StatusCode))
 	}
 }
@@ -95,12 +101,15 @@ func handleHelpCommand(bot *tgbotapi.BotAPI, userID int64, logger *slog.Logger) 
 // handleTrackCommand handles the /track command.
 func handleTrackCommand(bot *tgbotapi.BotAPI, userID int64, states StateManager, logger *slog.Logger) {
 	states.SetState(userID, "waiting_for_link")
+	logger.Debug("State of user", slog.Any("state", states.GetState(userID)), slog.Any("userID", userID))
 	logAndSendMessage(bot, userID, logger, "Введите ссылку для отслеживания:")
 }
 
 // handleUntrackCommand handles the /untrack command.
 func handleUntrackCommand(bot *tgbotapi.BotAPI, userID int64, states StateManager, logger *slog.Logger) {
 	states.SetState(userID, "waiting_for_untrack_link")
+
+	logger.Debug("State of user", slog.Any("state", states.GetState(userID)), slog.Any("userID", userID))
 	logAndSendMessage(bot, userID, logger, "Введите ссылку для удаления из отслеживания:")
 }
 
@@ -112,6 +121,11 @@ func handleListCommand(bot *tgbotapi.BotAPI, userID int64, apiClient client.Clie
 	resp, err := apiClient.GetLinks(ctx, &params)
 	if err != nil {
 		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Ошибка при получении списка подписок: %s", err.Error()))
+		return
+	}
+
+	if resp.StatusCode == 404 {
+		logAndSendMessage(bot, userID, logger, "Нет активных подписок!")
 		return
 	}
 
@@ -193,13 +207,15 @@ func handleWaitingForFilters(bot *tgbotapi.BotAPI, userID int64, states StateMan
 	tags := states.GetData(userID, "subscription_tags").([]string)
 	body := client.PostLinksJSONRequestBody{
 		Filters: &filters,
-		Link:    &(link),
+		Link:    &link,
 		Tags:    &tags,
 	}
 
 	resp, err := apiClient.PostLinks(ctx, &params, body)
 	if err != nil {
 		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Ошибка при создании подписки: %s", err.Error()))
+		logger.Warn("Failed to create subscription", slog.Any("error", err))
+
 		return
 	}
 	defer resp.Body.Close()
@@ -208,12 +224,20 @@ func handleWaitingForFilters(bot *tgbotapi.BotAPI, userID int64, states StateMan
 		states.SetState(userID, "")
 		logAndSendMessage(bot, userID, logger, "Подписка успешно создана!")
 	} else {
-		logAndSendMessage(bot, userID, logger, "Ошибка при создании подписки: Статус код не 201")
+		apiError := client.ApiErrorResponse{}
+		if err := json.NewDecoder(resp.Body).Decode(&apiError); err != nil {
+			logger.Warn("decoding", slog.Any("error", err.Error()))
+		}
+
+		logger.Warn("Unexpected status code while creating subscription", slog.Int("status_code", resp.StatusCode))
+		logger.Warn("Answer from server", slog.Any("code", *apiError.Code), slog.Any("Description", *apiError.Description))
+		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Ошибка при создании подписки: %s", resp.Status))
 	}
 }
 
 // handleWaitingForUntrackLink handles the "waiting_for_untrack_link" state.
-func handleWaitingForUntrackLink(bot *tgbotapi.BotAPI, userID int64, states StateManager,
+func handleWaitingForUntrackLink(bot *tgbotapi.BotAPI,
+	userID int64, states StateManager,
 	link string, apiClient *client.Client,
 	logger *slog.Logger,
 ) {
@@ -222,7 +246,9 @@ func handleWaitingForUntrackLink(bot *tgbotapi.BotAPI, userID int64, states Stat
 
 	resp, err := apiClient.DeleteLinks(ctx, &params)
 	if err != nil {
-		logAndSendMessage(bot, userID, logger, "Ошибка при удалении подписки.")
+		logger.Warn("Failed to delete subscription", slog.Any("error", err))
+		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Error deleting subscription: %s, try again", err.Error()))
+
 		return
 	}
 	defer resp.Body.Close()
