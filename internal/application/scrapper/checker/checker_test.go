@@ -3,6 +3,8 @@ package checker //nolint:testpackage // Need checkSubs variable for mocking func
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"testing"
 	"time"
@@ -26,7 +28,8 @@ func TestCheckSubscriptions_ProcessesAllSubscriptions(t *testing.T) {
 	mockStackOverflowClient := new(mockStackOverflowClient.ClientWithResponsesInterface)
 	mockBotClient := new(mockBotClient.ClientWithResponsesInterface)
 
-	checker := NewChecker(mockGithubClient, mockStackOverflowClient, mockBotClient)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	checker := NewChecker(mockGithubClient, mockStackOverflowClient, mockBotClient, logger)
 
 	LastActivityDate := 1234567890
 	// Mock subscriptions
@@ -87,46 +90,6 @@ func TestCheckSubscriptions_ProcessesAllSubscriptions(t *testing.T) {
 	mockBotClient.AssertNumberOfCalls(t, "PostUpdatesWithResponse", 2)
 	mockBotClient.AssertExpectations(t)
 }
-
-// func TestCheckSubscriptions_ProcessesAllSubscriptions(t *testing.T) {
-// 	// Arrange
-// 	mockRepo := new(mockRepo.Repository)
-// 	mockGithubClient := new(mockGithubClient.ClientWithResponsesInterface)
-// 	mockStackOverflowClient := new(mockStackOverflowClient.ClientWithResponsesInterface)
-// 	mockBotClient := new(mockBotClient.ClientWithResponsesInterface)
-//
-// 	checker := NewChecker(mockGithubClient, mockStackOverflowClient, mockBotClient)
-//
-// 	// Mock subscriptions
-// 	sub1 := domain.Subscription{ID: 1, URL: "https://github.com/repo1"}
-// 	sub2 := domain.Subscription{ID: 2, URL: "https://stackoverflow.com/questions/123"}
-//
-// 	mockRepo.On("GetSubsID").Return(domain.Set{1: {}, 2: {}})
-// 	mockRepo.On("GetSubscription", int64(1)).Return(sub1, nil)
-// 	mockRepo.On("GetSubscription", int64(2)).Return(sub2, nil)
-// 	mockRepo.On("UpdateSubscriptionActivity", mock.Anything, mock.Anything).Return(nil)
-//
-// 	// Mock bot client behavior
-// 	mockBotClient.On("PostUpdatesWithResponse", mock.Anything, mock.MatchedBy(
-// 		func(body botAPI.PostUpdatesJSONRequestBody) bool {
-// 			return *body.Url == sub1.URL
-// 		},
-// 	)).Return(&botAPI.PostUpdatesResponse{}, nil)
-//
-// 	mockBotClient.On("PostUpdatesWithResponse", mock.Anything, mock.MatchedBy(
-// 		func(body botAPI.PostUpdatesJSONRequestBody) bool {
-// 			return *body.Url == sub2.URL
-// 		},
-// 	)).Return(&botAPI.PostUpdatesResponse{}, nil)
-//
-// 	// Act
-// 	checker.CheckSubscriptions(context.Background(), mockRepo)
-//
-// 	// Assert
-// 	mockRepo.AssertExpectations(t)
-// 	mockBotClient.AssertNumberOfCalls(t, "PostUpdatesWithResponse", 2)
-// 	mockBotClient.AssertExpectations(t)
-// }
 
 func TestProcessUpdatedSubscription_Success(t *testing.T) {
 	mockBot := new(mockBotClient.ClientWithResponsesInterface)

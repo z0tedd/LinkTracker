@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"os"
 
@@ -32,22 +31,19 @@ func main() {
 
 	githubClient, err := githubAPI.NewClientWithResponses("https://api.github.com")
 	if err != nil {
-		log.Print(err.Error())
-
-		logger.ErrorContext(context.Background(), "bot-client startup", slog.Any("error", err.Error()))
+		logger.Error("bot-client startup", slog.Any("error", err.Error()))
 	}
 
 	stackOverflowClient, err := stackOverflowAPI.NewClientWithResponses("https://api.stackexchange.com/2.3")
 	if err != nil {
-		log.Print(err.Error())
-		logger.ErrorContext(context.Background(), "bot-client startup", slog.Any("error", err.Error()))
+		logger.Error("bot-client startup", slog.Any("error", err.Error()))
 	}
 
-	checker := checker.NewChecker(githubClient, stackOverflowClient, botClient)
+	checker := checker.NewChecker(githubClient, stackOverflowClient, botClient, logger)
 
 	scheduler, err := gocron.NewScheduler()
 	if err != nil {
-		logger.ErrorContext(context.Background(), "Scheduler startup", slog.Any("error", err.Error()))
+		logger.Error("Scheduler startup", slog.Any("error", err.Error()))
 		return
 	}
 
@@ -74,7 +70,7 @@ func main() {
 	e := echo.New()
 
 	// Create an instance of your server implementation
-	myServer := server.NewScrapperServer(repo)
+	myServer := server.NewScrapperServer(repo, logger)
 
 	// Register the handlers with the Echo router
 	unimplemented_server.RegisterHandlers(e, myServer)

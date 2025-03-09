@@ -3,7 +3,7 @@ package checker
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
 	botAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/client"
 	githubAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/github"
@@ -13,39 +13,50 @@ import (
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
 )
 
-// subs map[*domain.Subscription][]int64.
 type Repository interface {
 	GetSubsID() domain.Set
 	GetSubscription(subID int64) (domain.Subscription, error)
 	UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error
 }
+
 type Checker struct {
 	githubClient        githubAPI.ClientWithResponsesInterface
 	stackOverflowClient stackOverflowAPI.ClientWithResponsesInterface
 	botClient           botAPI.ClientWithResponsesInterface
+	logger              *slog.Logger
 }
 
 func NewChecker(
 	githubClient githubAPI.ClientWithResponsesInterface,
 	stackOverflowClient stackOverflowAPI.ClientWithResponsesInterface,
 	botClient botAPI.ClientWithResponsesInterface,
+	logger *slog.Logger,
 ) *Checker {
-	return &Checker{githubClient, stackOverflowClient, botClient}
+	return &Checker{githubClient, stackOverflowClient, botClient, logger}
 }
 
 func (c Checker) CheckSubscriptions(ctx context.Context, repo Repository) {
-	log.Print("i am checking!\n")
+	c.logger.Info("Starting subscription checks")
 
 	for subID := range repo.GetSubsID() {
 		sub, err := repo.GetSubscription(subID)
 		if err != nil {
-			log.Print(err.Error())
+			c.logger.Error("Failed to retrieve subscription",
+				"subID", subID,
+				"error", err,
+			)
+
 			continue
 		}
 
 		parsedLink, err := parsing.Link(sub.URL)
 		if err != nil {
-			log.Print(err.Error())
+			c.logger.Error("Failed to parse subscription URL",
+				"subID", subID,
+				"url", sub.URL,
+				"error", err,
+			)
+
 			continue
 		}
 
@@ -54,7 +65,11 @@ func (c Checker) CheckSubscriptions(ctx context.Context, repo Repository) {
 			if newActivity, updated := processing.Github(ctx, c.githubClient, parsedLink, subID, repo); updated {
 				err = repo.UpdateSubscriptionActivity(subID, newActivity)
 				if err != nil {
-					log.Print(err.Error())
+					c.logger.Error("Failed to update GitHub subscription activity",
+						"subID", subID,
+						"error", err,
+					)
+
 					continue
 				}
 			}
@@ -62,7 +77,11 @@ func (c Checker) CheckSubscriptions(ctx context.Context, repo Repository) {
 			if newActivity, updated := processing.StackOverflow(ctx, c.stackOverflowClient, parsedLink, subID, repo); updated {
 				err = repo.UpdateSubscriptionActivity(subID, newActivity)
 				if err != nil {
-					log.Print(err.Error())
+					c.logger.Error("Failed to update StackOverflow subscription activity",
+						"subID", subID,
+						"error", err,
+					)
+
 					continue
 				}
 			}
@@ -70,13 +89,20 @@ func (c Checker) CheckSubscriptions(ctx context.Context, repo Repository) {
 
 		sub, err = repo.GetSubscription(subID)
 		if err != nil {
-			log.Print(err.Error())
+			c.logger.Error("Failed to retrieve updated subscription",
+				"subID", subID,
+				"error", err,
+			)
+
 			continue
 		}
 
 		err = processUpdatedSubscription(ctx, c.botClient, sub)
 		if err != nil {
-			log.Print(err.Error())
+			c.logger.Error("Failed to process updated subscription",
+				"subID", subID,
+				"error", err,
+			)
 		}
 	}
 }
@@ -102,23 +128,3 @@ func processUpdatedSubscription(ctx context.Context, botClient botAPI.ClientWith
 
 	return nil
 }
-
-// // CheckLinks Берет
-// func CheckLinks(repo repository.Repository, botClient botAPI.ClientWithResponsesInterface) {
-// 	log.Println("I am checking!")
-//
-// 	ctx := context.Background()
-// 	subscriptionsByUserIDs := repo.GetSubscriptionsByUserIDs()
-//
-// 	updatedSubscriptions, err := checkSubs(ctx, subscriptionsByUserIDs)
-// 	if err != nil {
-// 		log.Println(err)
-// 		return
-// 	}
-//
-// 	for _, subscription := range updatedSubscriptions {
-// 		if err = processUpdatedSubscription(ctx, botClient, subscription); err != nil {
-// 			log.Println(err, subscription.URL)
-// 		}
-// 	}
-// }

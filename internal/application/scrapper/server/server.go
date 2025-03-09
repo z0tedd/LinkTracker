@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -20,20 +20,24 @@ type Repository interface {
 	GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error)
 }
 
-// ScrapperServer implements the ServerInterface and uses the Repository for data operations.
 type ScrapperServer struct {
-	repo Repository
+	repo   Repository
+	logger *slog.Logger
 }
 
-// NewScrapperServer creates a new instance of ScrapperServer with the given repository.
-func NewScrapperServer(repo Repository) *ScrapperServer {
-	return &ScrapperServer{repo: repo}
+func NewScrapperServer(repo Repository, logger *slog.Logger) *ScrapperServer {
+	return &ScrapperServer{repo: repo, logger: logger}
 }
 
-// DeleteLinks removes a subscription for a user based on the provided parameters.
 func (s *ScrapperServer) DeleteLinks(ctx echo.Context, params server.DeleteLinksParams) error {
 	err := s.repo.RemoveSubscription(params.TgChatId, params.Link)
 	if err != nil {
+		s.logger.Error("Failed to delete subscription",
+			"tg_chat_id", params.TgChatId,
+			"link", params.Link,
+			"error", err,
+		)
+
 		return ctx.JSON(http.StatusNotFound, server.ApiErrorResponse{
 			Code:        stringPtr("not_found"),
 			Description: stringPtr("Subscription not found"),
@@ -43,10 +47,14 @@ func (s *ScrapperServer) DeleteLinks(ctx echo.Context, params server.DeleteLinks
 	return ctx.JSON(http.StatusOK, map[string]string{"message": "Link deleted"})
 }
 
-// GetLinks retrieves all subscriptions for a user.
 func (s *ScrapperServer) GetLinks(ctx echo.Context, params server.GetLinksParams) error {
 	subscriptions, err := s.repo.GetSubscriptionsForUser(params.TgChatId)
 	if err != nil {
+		s.logger.Error("Failed to retrieve subscriptions",
+			"tg_chat_id", params.TgChatId,
+			"error", err,
+		)
+
 		return ctx.JSON(http.StatusNotFound, server.ApiErrorResponse{
 			Code:        stringPtr("not_found"),
 			Description: stringPtr("No subscriptions found for the user"),
@@ -61,11 +69,14 @@ func (s *ScrapperServer) GetLinks(ctx echo.Context, params server.GetLinksParams
 	return ctx.JSON(http.StatusOK, response)
 }
 
-// PostLinks adds a new subscription for a user.
 func (s *ScrapperServer) PostLinks(ctx echo.Context, params server.PostLinksParams) error {
 	var requestBody server.PostLinksJSONRequestBody
-	// server.AddLinkRequest
 	if err := ctx.Bind(&requestBody); err != nil {
+		s.logger.Error("Invalid request body",
+			"tg_chat_id", params.TgChatId,
+			"error", err,
+		)
+
 		return ctx.JSON(http.StatusBadRequest, server.ApiErrorResponse{
 			Code:        stringPtr("invalid_request"),
 			Description: stringPtr("Invalid request body"),
@@ -79,68 +90,68 @@ func (s *ScrapperServer) PostLinks(ctx echo.Context, params server.PostLinksPara
 		TgChatIDs:         []int64{params.TgChatId},
 		LastActivity:      domain.Activity{DateUnix: time.Now().Unix()},
 	}
-	// server.AddLinkRequest
+
 	subPreferences := domain.UserPreferences{
 		Filters: convertToMap(*requestBody.Filters),
-		SubID:   11312, // random
+		SubID:   11312,
 		Tags:    *requestBody.Tags,
 		URL:     *requestBody.Link,
 	}
 
 	err := s.repo.AddSubscription(params.TgChatId, sub, subPreferences)
 	if err != nil {
-		log.Println(err.Error())
+		s.logger.Error("Failed to add subscription to repository",
+			"tg_chat_id", params.TgChatId,
+			"link", requestBody.Link,
+			"error", err,
+		)
 
 		return ctx.JSON(http.StatusBadRequest, server.ApiErrorResponse{
 			Code:        stringPtr("failed_request"),
-			Description: stringPtr("failed to add sub to repo"),
+			Description: stringPtr("Failed to add subscription to repository"),
 		})
 	}
-	// Register the user if not already registered
-	// s.repo.RegisterUser(params.TgChatId)
-	//
-	// // Add the subscription
-	// s.repo.AddSubscription(params.TgChatId, *requestBody.Link)
-
-	// Set tags and filters if provided
-	// if requestBody.Tags != nil {
-	// 	s.repo.SetTags(params.TgChatId, *requestBody.Tags)
-	// }
-	//
-	// if requestBody.Filters != nil {
-	// 	s.repo.SetFilters(params.TgChatId, convertToMap(*requestBody.Filters))
-	// }
 
 	return ctx.JSON(http.StatusCreated, map[string]string{"message": "Link added"})
 }
 
 // //nolint:revive,stylecheck // implementation of generated interface.
-// DeleteTgChatId removes a user and their subscriptions.
 func (s *ScrapperServer) DeleteTgChatId(ctx echo.Context, id int64) error {
-	// Remove all subscriptions for the user
 	err := s.repo.DeleteUser(id)
 	if err != nil {
+		s.logger.Error("Failed to delete user",
+			"tg_chat_id", id,
+			"error", err,
+		)
+
 		return ctx.JSON(http.StatusBadRequest, server.ApiErrorResponse{
 			Code:        stringPtr("400 StatusBadRequest"),
-			Description: stringPtr("Failed to delete chat."),
+			Description: stringPtr("Failed to delete chat"),
 		})
 	}
 
 	return ctx.JSON(http.StatusOK, map[string]string{"message": "Chat deleted"})
 }
 
-// PostTgChatId registers a new user.
 // //nolint:revive,stylecheck // implementation of generated interface.
 func (s *ScrapperServer) PostTgChatId(ctx echo.Context, id int64) error {
 	err := s.repo.RegisterUser(id)
 	if err != nil {
+		s.logger.Error("Failed to register user",
+			"tg_chat_id", id,
+			"error", err,
+		)
+
 		return ctx.JSON(http.StatusUnprocessableEntity, server.ApiErrorResponse{
-			Code: stringPtr("422"), Description: stringPtr(err.Error()),
+			Code:        stringPtr("422"),
+			Description: stringPtr(err.Error()),
 		})
 	}
 
 	return ctx.JSON(http.StatusCreated, map[string]string{"message": "Chat registered"})
 }
+
+// Helper functions remain unchanged...
 
 // Helper function to convert []*Subscription to []*LinkResponse.
 func convertToLinkResponse(subscriptions []domain.UserPreferences) *[]server.LinkResponse {
