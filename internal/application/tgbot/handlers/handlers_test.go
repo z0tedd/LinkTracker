@@ -16,16 +16,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// // MockClient simulates the API client for testing
-// type MockClient struct {
-// 	Response *http.Response
-// 	Err      error
-// }
-
-// func (m *MockClient) GetLinks(ctx context.Context, params *client.GetLinksParams) (*http.Response, error) {
-// 	return m.Response, m.Err
-// }
-
 func ptrString(s string) *string {
 	return &s
 }

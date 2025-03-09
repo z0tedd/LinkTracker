@@ -1,11 +1,5 @@
 package domain
 
-type Subscription1 struct {
-	Link             string
-	Tags             []string
-	Filters          map[string]string
-	LastActivityDate int64
-}
 type Subscription struct {
 	ID                int64
 	URL               string
