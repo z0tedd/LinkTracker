@@ -47,6 +47,22 @@ type Commit struct {
 	Sha *string `json:"sha,omitempty"`
 }
 
+// ListIssuesPulls defines model for ListIssuesPulls.
+type ListIssuesPulls struct {
+	// Body Body of the issue
+	Body *string `json:"body,omitempty"`
+
+	// CreatedAt Creation date of the issue
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+
+	// Title Title of the issue
+	Title *string `json:"title,omitempty"`
+	User  *struct {
+		// Login Username of the creator
+		Login *string `json:"login,omitempty"`
+	} `json:"user,omitempty"`
+}
+
 // Repository defines model for Repository.
 type Repository struct {
 	CreatedAt   *time.Time `json:"created_at,omitempty"`
@@ -159,6 +175,12 @@ type ClientInterface interface {
 	// GetReposOwnerRepoCommits request
 	GetReposOwnerRepoCommits(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListIssues request
+	ListIssues(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPullRequests request
+	ListPullRequests(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetUsersUsername request
 	GetUsersUsername(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -192,6 +214,30 @@ func (c *Client) GetReposOwnerRepoActivity(ctx context.Context, owner OwnerParam
 
 func (c *Client) GetReposOwnerRepoCommits(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetReposOwnerRepoCommitsRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListIssues(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListIssuesRequest(c.Server, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListPullRequests(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPullRequestsRequest(c.Server, owner, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -349,6 +395,88 @@ func NewGetReposOwnerRepoCommitsRequest(server string, owner OwnerParam, repo Re
 	return req, nil
 }
 
+// NewListIssuesRequest generates requests for ListIssues
+func NewListIssuesRequest(server string, owner OwnerParam, repo RepoParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "owner", runtime.ParamLocationPath, owner)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "repo", runtime.ParamLocationPath, repo)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/issues", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListPullRequestsRequest generates requests for ListPullRequests
+func NewListPullRequestsRequest(server string, owner OwnerParam, repo RepoParam) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "owner", runtime.ParamLocationPath, owner)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "repo", runtime.ParamLocationPath, repo)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s/pulls", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetUsersUsernameRequest generates requests for GetUsersUsername
 func NewGetUsersUsernameRequest(server string, username UsernameParam) (*http.Request, error) {
 	var err error
@@ -469,6 +597,12 @@ type ClientWithResponsesInterface interface {
 	// GetReposOwnerRepoCommitsWithResponse request
 	GetReposOwnerRepoCommitsWithResponse(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*GetReposOwnerRepoCommitsResponse, error)
 
+	// ListIssuesWithResponse request
+	ListIssuesWithResponse(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*ListIssuesResponse, error)
+
+	// ListPullRequestsWithResponse request
+	ListPullRequestsWithResponse(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*ListPullRequestsResponse, error)
+
 	// GetUsersUsernameWithResponse request
 	GetUsersUsernameWithResponse(ctx context.Context, username UsernameParam, reqEditors ...RequestEditorFn) (*GetUsersUsernameResponse, error)
 
@@ -536,6 +670,50 @@ func (r GetReposOwnerRepoCommitsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetReposOwnerRepoCommitsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListIssuesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ListIssuesPulls
+}
+
+// Status returns HTTPResponse.Status
+func (r ListIssuesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListIssuesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListPullRequestsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ListIssuesPulls
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPullRequestsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPullRequestsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -611,6 +789,24 @@ func (c *ClientWithResponses) GetReposOwnerRepoCommitsWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseGetReposOwnerRepoCommitsResponse(rsp)
+}
+
+// ListIssuesWithResponse request returning *ListIssuesResponse
+func (c *ClientWithResponses) ListIssuesWithResponse(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*ListIssuesResponse, error) {
+	rsp, err := c.ListIssues(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListIssuesResponse(rsp)
+}
+
+// ListPullRequestsWithResponse request returning *ListPullRequestsResponse
+func (c *ClientWithResponses) ListPullRequestsWithResponse(ctx context.Context, owner OwnerParam, repo RepoParam, reqEditors ...RequestEditorFn) (*ListPullRequestsResponse, error) {
+	rsp, err := c.ListPullRequests(ctx, owner, repo, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPullRequestsResponse(rsp)
 }
 
 // GetUsersUsernameWithResponse request returning *GetUsersUsernameResponse
@@ -699,6 +895,58 @@ func ParseGetReposOwnerRepoCommitsResponse(rsp *http.Response) (*GetReposOwnerRe
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest []Commit
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListIssuesResponse parses an HTTP response from a ListIssuesWithResponse call
+func ParseListIssuesResponse(rsp *http.Response) (*ListIssuesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListIssuesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ListIssuesPulls
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPullRequestsResponse parses an HTTP response from a ListPullRequestsWithResponse call
+func ParseListPullRequestsResponse(rsp *http.Response) (*ListPullRequestsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPullRequestsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ListIssuesPulls
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

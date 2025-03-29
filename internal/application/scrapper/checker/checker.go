@@ -23,6 +23,7 @@ type Checker struct {
 	githubClient        githubAPI.ClientWithResponsesInterface
 	stackOverflowClient stackOverflowAPI.ClientWithResponsesInterface
 	botClient           botAPI.ClientWithResponsesInterface
+	repo                Repository
 	logger              *slog.Logger
 }
 
@@ -31,15 +32,16 @@ func NewChecker(
 	stackOverflowClient stackOverflowAPI.ClientWithResponsesInterface,
 	botClient botAPI.ClientWithResponsesInterface,
 	logger *slog.Logger,
+	repo Repository,
 ) *Checker {
-	return &Checker{githubClient, stackOverflowClient, botClient, logger}
+	return &Checker{githubClient, stackOverflowClient, botClient, repo, logger}
 }
 
-func (c Checker) CheckSubscriptions(ctx context.Context, repo Repository) {
+func (c Checker) CheckSubscriptions(ctx context.Context) {
 	c.logger.Info("Starting subscription checks")
 
-	for subID := range repo.GetSubsID() {
-		sub, err := repo.GetSubscription(subID)
+	for subID := range c.repo.GetSubsID() {
+		sub, err := c.repo.GetSubscription(subID)
 		if err != nil {
 			c.logger.Error("Failed to retrieve subscription",
 				"subID", subID,
@@ -62,8 +64,8 @@ func (c Checker) CheckSubscriptions(ctx context.Context, repo Repository) {
 
 		switch parsedLink["linkHost"] {
 		case "github":
-			if newActivity, updated := processing.Github(ctx, c.githubClient, parsedLink, subID, repo); updated {
-				err = repo.UpdateSubscriptionActivity(subID, newActivity)
+			if newActivity, updated := processing.Github(ctx, c.githubClient, parsedLink, subID, c.repo); updated {
+				err = c.repo.UpdateSubscriptionActivity(subID, newActivity)
 				if err != nil {
 					c.logger.Error("Failed to update GitHub subscription activity",
 						"subID", subID,
@@ -74,8 +76,8 @@ func (c Checker) CheckSubscriptions(ctx context.Context, repo Repository) {
 				}
 			}
 		case "stackoverflow":
-			if newActivity, updated := processing.StackOverflow(ctx, c.stackOverflowClient, parsedLink, subID, repo); updated {
-				err = repo.UpdateSubscriptionActivity(subID, newActivity)
+			if newActivity, updated := processing.StackOverflow(ctx, c.stackOverflowClient, parsedLink, subID, c.repo); updated {
+				err = c.repo.UpdateSubscriptionActivity(subID, newActivity)
 				if err != nil {
 					c.logger.Error("Failed to update StackOverflow subscription activity",
 						"subID", subID,
@@ -87,7 +89,7 @@ func (c Checker) CheckSubscriptions(ctx context.Context, repo Repository) {
 			}
 		}
 
-		sub, err = repo.GetSubscription(subID)
+		sub, err = c.repo.GetSubscription(subID)
 		if err != nil {
 			c.logger.Error("Failed to retrieve updated subscription",
 				"subID", subID,

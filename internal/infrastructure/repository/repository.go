@@ -82,6 +82,7 @@ func (r *InMemoryRepository) DeleteUser(userID int64) error {
 }
 
 // AddSubscription adds a new subscription for a user.
+// Ищем подписку по ссылке, нет? => создаем, иначе просто апдейтим, и в отдельную мапу(таблицу) кидаем преференсы
 func (r *InMemoryRepository) AddSubscription(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -216,6 +217,7 @@ func (r *InMemoryRepository) createNewID() int64 {
 	return atomic.AddInt64(&r.idCounter, 1)
 }
 
+// updateSubscriptionUsers просто добавляет в конец подписки ID пользователя и обновляет репозиторий
 func (r *InMemoryRepository) updateSubscriptionUsers(subID, userID int64) error {
 	sub, exists := r.subsByID[subID]
 	if !exists {

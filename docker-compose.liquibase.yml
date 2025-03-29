@@ -1,0 +1,17 @@
+# liquibase-migrations:
+#   container_name: migrations
+#   image: liquibase/liquibase:4.29
+#   depends_on:
+#     - postgresql
+#   command:
+#     - --searchPath=/changesets
+#     - --changelog-file=master.xml
+#     - --driver=org.postgresql.Driver
+#     - --url=jdbc:postgresql://postgresql:5430/postgres_db
+#     - --username=postgres_user
+#     - --password=postgres_password
+#     - update
+#   volumes:
+#     - ./migrations:/changesets
+#   networks:
+#     - backend

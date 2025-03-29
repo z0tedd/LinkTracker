@@ -1,0 +1,92 @@
+services:
+  postgres:
+    image: postgres:latest
+
+    container_name: postgres_container
+
+    environment:
+      POSTGRES_USER: postgres_user
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: postgres_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5430:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data/pgdata
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    command: >
+      postgres -c max_connections=1000
+               -c shared_buffers=256MB
+               -c effective_cache_size=768MB
+               -c maintenance_work_mem=64MB
+               -c checkpoint_completion_target=0.7
+               -c wal_buffers=16MB
+               -c default_statistics_target=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres_user -d postgres_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    networks:
+      - postgres-network
+
+  liquibase-migrations:
+    container_name: migrations
+    image: liquibase/liquibase:4.29
+
+    profiles: ["migrations"]
+    depends_on:
+      - postgres
+    command:
+      - --searchPath=/changesets
+      - --changelog-file=master.xml
+      - --driver=org.postgresql.Driver
+      - --url=jdbc:postgresql://postgres_container:5432/postgres_db
+      - --username=postgres_user
+      - --password=postgres_password
+      # - clear-checksums
+      - update
+    volumes:
+      - ./migrations:/changesets
+    networks:
+      - postgres-network
+
+  # pgadmin:
+  #   container_name: pgadmin_container
+  #   image: dpage/pgadmin4:latest
+  #   profiles: ["migrations"]
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: "habrpguser@habr.com"
+  #     PGADMIN_DEFAULT_PASSWORD: "pgadminpwd4habr"
+  #     PGADMIN_CONFIG_SERVER_MODE: "False"
+  #   volumes:
+  #     - ./pgadmin-data:/var/lib/pgadmin
+  #   ports:
+  #     - "5051:80"
+  #   restart: unless-stopped
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "0.5"
+  #         memory: 1G
+  #   networks:
+  #     - postgres-network
+
+volumes:
+  pgdata:
+    driver: local
+  pgadmin-data:
+    driver: local
+networks:
+  postgres-network:
+    # driver: bridge

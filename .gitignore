@@ -8,6 +8,9 @@
 *.so
 *.dylib
 bin
+pgdata
+pgadmin-data
+migrations
 
 
 # Test binary, built with `go test -c`

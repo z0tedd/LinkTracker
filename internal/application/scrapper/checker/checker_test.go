@@ -29,7 +29,7 @@ func TestCheckSubscriptions_ProcessesAllSubscriptions(t *testing.T) {
 	mockBotClient := new(mockBotClient.ClientWithResponsesInterface)
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	checker := NewChecker(mockGithubClient, mockStackOverflowClient, mockBotClient, logger)
+	checker := NewChecker(mockGithubClient, mockStackOverflowClient, mockBotClient, logger, mockRepo)
 
 	LastActivityDate := 1234567890
 	// Mock subscriptions
@@ -81,7 +81,7 @@ func TestCheckSubscriptions_ProcessesAllSubscriptions(t *testing.T) {
 	)).Return(&botAPI.PostUpdatesResponse{}, nil)
 
 	// Act
-	checker.CheckSubscriptions(context.Background(), mockRepo)
+	checker.CheckSubscriptions(context.Background())
 
 	// Assert
 	mockRepo.AssertExpectations(t)

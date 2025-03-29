@@ -10,6 +10,12 @@ type Subscription struct {
 type Activity struct {
 	DateUnix int64
 }
+
+// users-preferences
+// userID SubID Filters Tags URL
+
+// subs
+// SubID URL TgChatIDs LastActivity
 type UserPreferences struct {
 	SubID   int
 	Filters map[string]string

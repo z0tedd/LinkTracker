@@ -396,6 +396,156 @@ func (_c *ClientWithResponsesInterface_GetUsersUsernameWithResponse_Call) RunAnd
 	return _c
 }
 
+// ListIssuesWithResponse provides a mock function with given fields: ctx, owner, repo, reqEditors
+func (_m *ClientWithResponsesInterface) ListIssuesWithResponse(ctx context.Context, owner string, repo string, reqEditors ...client.RequestEditorFn) (*client.ListIssuesResponse, error) {
+	_va := make([]interface{}, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, owner, repo)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListIssuesWithResponse")
+	}
+
+	var r0 *client.ListIssuesResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, ...client.RequestEditorFn) (*client.ListIssuesResponse, error)); ok {
+		return rf(ctx, owner, repo, reqEditors...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, ...client.RequestEditorFn) *client.ListIssuesResponse); ok {
+		r0 = rf(ctx, owner, repo, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.ListIssuesResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, ...client.RequestEditorFn) error); ok {
+		r1 = rf(ctx, owner, repo, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ClientWithResponsesInterface_ListIssuesWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListIssuesWithResponse'
+type ClientWithResponsesInterface_ListIssuesWithResponse_Call struct {
+	*mock.Call
+}
+
+// ListIssuesWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - owner string
+//   - repo string
+//   - reqEditors ...client.RequestEditorFn
+func (_e *ClientWithResponsesInterface_Expecter) ListIssuesWithResponse(ctx interface{}, owner interface{}, repo interface{}, reqEditors ...interface{}) *ClientWithResponsesInterface_ListIssuesWithResponse_Call {
+	return &ClientWithResponsesInterface_ListIssuesWithResponse_Call{Call: _e.mock.On("ListIssuesWithResponse",
+		append([]interface{}{ctx, owner, repo}, reqEditors...)...)}
+}
+
+func (_c *ClientWithResponsesInterface_ListIssuesWithResponse_Call) Run(run func(ctx context.Context, owner string, repo string, reqEditors ...client.RequestEditorFn)) *ClientWithResponsesInterface_ListIssuesWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]client.RequestEditorFn, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *ClientWithResponsesInterface_ListIssuesWithResponse_Call) Return(_a0 *client.ListIssuesResponse, _a1 error) *ClientWithResponsesInterface_ListIssuesWithResponse_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ClientWithResponsesInterface_ListIssuesWithResponse_Call) RunAndReturn(run func(context.Context, string, string, ...client.RequestEditorFn) (*client.ListIssuesResponse, error)) *ClientWithResponsesInterface_ListIssuesWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListPullRequestsWithResponse provides a mock function with given fields: ctx, owner, repo, reqEditors
+func (_m *ClientWithResponsesInterface) ListPullRequestsWithResponse(ctx context.Context, owner string, repo string, reqEditors ...client.RequestEditorFn) (*client.ListPullRequestsResponse, error) {
+	_va := make([]interface{}, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, owner, repo)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListPullRequestsWithResponse")
+	}
+
+	var r0 *client.ListPullRequestsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, ...client.RequestEditorFn) (*client.ListPullRequestsResponse, error)); ok {
+		return rf(ctx, owner, repo, reqEditors...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, ...client.RequestEditorFn) *client.ListPullRequestsResponse); ok {
+		r0 = rf(ctx, owner, repo, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.ListPullRequestsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, ...client.RequestEditorFn) error); ok {
+		r1 = rf(ctx, owner, repo, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ClientWithResponsesInterface_ListPullRequestsWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListPullRequestsWithResponse'
+type ClientWithResponsesInterface_ListPullRequestsWithResponse_Call struct {
+	*mock.Call
+}
+
+// ListPullRequestsWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - owner string
+//   - repo string
+//   - reqEditors ...client.RequestEditorFn
+func (_e *ClientWithResponsesInterface_Expecter) ListPullRequestsWithResponse(ctx interface{}, owner interface{}, repo interface{}, reqEditors ...interface{}) *ClientWithResponsesInterface_ListPullRequestsWithResponse_Call {
+	return &ClientWithResponsesInterface_ListPullRequestsWithResponse_Call{Call: _e.mock.On("ListPullRequestsWithResponse",
+		append([]interface{}{ctx, owner, repo}, reqEditors...)...)}
+}
+
+func (_c *ClientWithResponsesInterface_ListPullRequestsWithResponse_Call) Run(run func(ctx context.Context, owner string, repo string, reqEditors ...client.RequestEditorFn)) *ClientWithResponsesInterface_ListPullRequestsWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]client.RequestEditorFn, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(string), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *ClientWithResponsesInterface_ListPullRequestsWithResponse_Call) Return(_a0 *client.ListPullRequestsResponse, _a1 error) *ClientWithResponsesInterface_ListPullRequestsWithResponse_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ClientWithResponsesInterface_ListPullRequestsWithResponse_Call) RunAndReturn(run func(context.Context, string, string, ...client.RequestEditorFn) (*client.ListPullRequestsResponse, error)) *ClientWithResponsesInterface_ListPullRequestsWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewClientWithResponsesInterface creates a new instance of ClientWithResponsesInterface. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewClientWithResponsesInterface(t interface {

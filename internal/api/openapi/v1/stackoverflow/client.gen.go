@@ -55,21 +55,39 @@ const (
 
 // Defines values for GetQuestionAnswersParamsOrder.
 const (
-	Asc  GetQuestionAnswersParamsOrder = "asc"
-	Desc GetQuestionAnswersParamsOrder = "desc"
+	GetQuestionAnswersParamsOrderAsc  GetQuestionAnswersParamsOrder = "asc"
+	GetQuestionAnswersParamsOrderDesc GetQuestionAnswersParamsOrder = "desc"
 )
 
 // Defines values for GetQuestionAnswersParamsSort.
 const (
-	Activity GetQuestionAnswersParamsSort = "activity"
-	Creation GetQuestionAnswersParamsSort = "creation"
-	Votes    GetQuestionAnswersParamsSort = "votes"
+	GetQuestionAnswersParamsSortActivity GetQuestionAnswersParamsSort = "activity"
+	GetQuestionAnswersParamsSortCreation GetQuestionAnswersParamsSort = "creation"
+	GetQuestionAnswersParamsSortVotes    GetQuestionAnswersParamsSort = "votes"
 )
 
 // Defines values for GetQuestionAnswersParamsSite.
 const (
-	Stackexchange GetQuestionAnswersParamsSite = "stackexchange"
-	Stackoverflow GetQuestionAnswersParamsSite = "stackoverflow"
+	GetQuestionAnswersParamsSiteStackexchange GetQuestionAnswersParamsSite = "stackexchange"
+	GetQuestionAnswersParamsSiteStackoverflow GetQuestionAnswersParamsSite = "stackoverflow"
+)
+
+// Defines values for GetQuestionCommentsParamsOrder.
+const (
+	GetQuestionCommentsParamsOrderAsc  GetQuestionCommentsParamsOrder = "asc"
+	GetQuestionCommentsParamsOrderDesc GetQuestionCommentsParamsOrder = "desc"
+)
+
+// Defines values for GetQuestionCommentsParamsSite.
+const (
+	GetQuestionCommentsParamsSiteStackexchange GetQuestionCommentsParamsSite = "stackexchange"
+	GetQuestionCommentsParamsSiteStackoverflow GetQuestionCommentsParamsSite = "stackoverflow"
+)
+
+// Defines values for GetQuestionCommentsParamsSort.
+const (
+	GetQuestionCommentsParamsSortCreation GetQuestionCommentsParamsSort = "creation"
+	GetQuestionCommentsParamsSortVotes    GetQuestionCommentsParamsSort = "votes"
 )
 
 // Answer defines model for Answer.
@@ -83,6 +101,19 @@ type Answer struct {
 	Owner            *User   `json:"owner,omitempty"`
 	QuestionId       *int    `json:"question_id,omitempty"`
 	Score            *int    `json:"score,omitempty"`
+}
+
+// Comment defines model for Comment.
+type Comment struct {
+	Body           *string `json:"body,omitempty"`
+	CommentId      *int    `json:"comment_id,omitempty"`
+	ContentLicense *string `json:"content_license,omitempty"`
+	CreationDate   *int    `json:"creation_date,omitempty"`
+	Edited         *bool   `json:"edited,omitempty"`
+	Owner          *User   `json:"owner,omitempty"`
+	PostId         *int    `json:"post_id,omitempty"`
+	ReplyToUser    *User   `json:"reply_to_user,omitempty"`
+	Score          *int    `json:"score,omitempty"`
 }
 
 // Question defines model for Question.
@@ -117,6 +148,9 @@ type User struct {
 	UserId       *int    `json:"user_id,omitempty"`
 	UserType     *string `json:"user_type,omitempty"`
 }
+
+// FilterParam defines model for FilterParam.
+type FilterParam = string
 
 // FromDateParam defines model for FromDateParam.
 type FromDateParam = int
@@ -215,6 +249,9 @@ type GetQuestionAnswersParams struct {
 
 	// Max Maximum value for the sort field.
 	Max *MaxParam `form:"max,omitempty" json:"max,omitempty"`
+
+	// Filter The Stack Exchange filtering. Allows getting body of comments/answer.
+	Filter *FilterParam `form:"filter,omitempty" json:"filter,omitempty"`
 }
 
 // GetQuestionAnswersParamsOrder defines parameters for GetQuestionAnswers.
@@ -225,6 +262,48 @@ type GetQuestionAnswersParamsSort string
 
 // GetQuestionAnswersParamsSite defines parameters for GetQuestionAnswers.
 type GetQuestionAnswersParamsSite string
+
+// GetQuestionCommentsParams defines parameters for GetQuestionComments.
+type GetQuestionCommentsParams struct {
+	// Order The order of sorting (e.g., "desc" or "asc").
+	Order *GetQuestionCommentsParamsOrder `form:"order,omitempty" json:"order,omitempty"`
+
+	// Site The Stack Exchange site to query (e.g., "stackoverflow").
+	Site GetQuestionCommentsParamsSite `form:"site" json:"site"`
+
+	// Page The page number for paginated results.
+	Page *PageParam `form:"page,omitempty" json:"page,omitempty"`
+
+	// Pagesize The number of items per page.
+	Pagesize *PagesizeParam `form:"pagesize,omitempty" json:"pagesize,omitempty"`
+
+	// Fromdate Start date for filtering results (Unix epoch time).
+	Fromdate *FromDateParam `form:"fromdate,omitempty" json:"fromdate,omitempty"`
+
+	// Todate End date for filtering results (Unix epoch time).
+	Todate *ToDateParam `form:"todate,omitempty" json:"todate,omitempty"`
+
+	// Min Minimum value for the sort field.
+	Min *MinParam `form:"min,omitempty" json:"min,omitempty"`
+
+	// Max Maximum value for the sort field.
+	Max *MaxParam `form:"max,omitempty" json:"max,omitempty"`
+
+	// Filter The Stack Exchange filtering. Allows getting body of comments/answer.
+	Filter *FilterParam `form:"filter,omitempty" json:"filter,omitempty"`
+
+	// Sort The field to sort by (e.g.,  "creation", "votes").
+	Sort *GetQuestionCommentsParamsSort `form:"sort,omitempty" json:"sort,omitempty"`
+}
+
+// GetQuestionCommentsParamsOrder defines parameters for GetQuestionComments.
+type GetQuestionCommentsParamsOrder string
+
+// GetQuestionCommentsParamsSite defines parameters for GetQuestionComments.
+type GetQuestionCommentsParamsSite string
+
+// GetQuestionCommentsParamsSort defines parameters for GetQuestionComments.
+type GetQuestionCommentsParamsSort string
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -304,6 +383,9 @@ type ClientInterface interface {
 
 	// GetQuestionAnswers request
 	GetQuestionAnswers(ctx context.Context, ids IdParam, params *GetQuestionAnswersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetQuestionComments request
+	GetQuestionComments(ctx context.Context, ids IdParam, params *GetQuestionCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetQuestionsByIds(ctx context.Context, ids IdParam, params *GetQuestionsByIdsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -320,6 +402,18 @@ func (c *Client) GetQuestionsByIds(ctx context.Context, ids IdParam, params *Get
 
 func (c *Client) GetQuestionAnswers(ctx context.Context, ids IdParam, params *GetQuestionAnswersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetQuestionAnswersRequest(c.Server, ids, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetQuestionComments(ctx context.Context, ids IdParam, params *GetQuestionCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetQuestionCommentsRequest(c.Server, ids, params)
 	if err != nil {
 		return nil, err
 	}
@@ -679,6 +773,218 @@ func NewGetQuestionAnswersRequest(server string, ids IdParam, params *GetQuestio
 
 		}
 
+		if params.Filter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "filter", runtime.ParamLocationQuery, *params.Filter); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetQuestionCommentsRequest generates requests for GetQuestionComments
+func NewGetQuestionCommentsRequest(server string, ids IdParam, params *GetQuestionCommentsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "ids", runtime.ParamLocationPath, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/questions/%s/comments", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Order != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "order", runtime.ParamLocationQuery, *params.Order); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "site", runtime.ParamLocationQuery, params.Site); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Page != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Pagesize != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "pagesize", runtime.ParamLocationQuery, *params.Pagesize); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Fromdate != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "fromdate", runtime.ParamLocationQuery, *params.Fromdate); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Todate != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "todate", runtime.ParamLocationQuery, *params.Todate); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Min != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "min", runtime.ParamLocationQuery, *params.Min); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Max != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "max", runtime.ParamLocationQuery, *params.Max); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Filter != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "filter", runtime.ParamLocationQuery, *params.Filter); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Sort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -738,6 +1044,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetQuestionAnswersWithResponse request
 	GetQuestionAnswersWithResponse(ctx context.Context, ids IdParam, params *GetQuestionAnswersParams, reqEditors ...RequestEditorFn) (*GetQuestionAnswersResponse, error)
+
+	// GetQuestionCommentsWithResponse request
+	GetQuestionCommentsWithResponse(ctx context.Context, ids IdParam, params *GetQuestionCommentsParams, reqEditors ...RequestEditorFn) (*GetQuestionCommentsResponse, error)
 }
 
 type GetQuestionsByIdsResponse struct {
@@ -794,6 +1103,33 @@ func (r GetQuestionAnswersResponse) StatusCode() int {
 	return 0
 }
 
+type GetQuestionCommentsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		HasMore        *bool      `json:"has_more,omitempty"`
+		Items          *[]Comment `json:"items,omitempty"`
+		QuotaMax       *int       `json:"quota_max,omitempty"`
+		QuotaRemaining *int       `json:"quota_remaining,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r GetQuestionCommentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetQuestionCommentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // GetQuestionsByIdsWithResponse request returning *GetQuestionsByIdsResponse
 func (c *ClientWithResponses) GetQuestionsByIdsWithResponse(ctx context.Context, ids IdParam, params *GetQuestionsByIdsParams, reqEditors ...RequestEditorFn) (*GetQuestionsByIdsResponse, error) {
 	rsp, err := c.GetQuestionsByIds(ctx, ids, params, reqEditors...)
@@ -810,6 +1146,15 @@ func (c *ClientWithResponses) GetQuestionAnswersWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseGetQuestionAnswersResponse(rsp)
+}
+
+// GetQuestionCommentsWithResponse request returning *GetQuestionCommentsResponse
+func (c *ClientWithResponses) GetQuestionCommentsWithResponse(ctx context.Context, ids IdParam, params *GetQuestionCommentsParams, reqEditors ...RequestEditorFn) (*GetQuestionCommentsResponse, error) {
+	rsp, err := c.GetQuestionComments(ctx, ids, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetQuestionCommentsResponse(rsp)
 }
 
 // ParseGetQuestionsByIdsResponse parses an HTTP response from a GetQuestionsByIdsWithResponse call
@@ -863,6 +1208,37 @@ func ParseGetQuestionAnswersResponse(rsp *http.Response) (*GetQuestionAnswersRes
 			Items          *[]Answer `json:"items,omitempty"`
 			QuotaMax       *int      `json:"quota_max,omitempty"`
 			QuotaRemaining *int      `json:"quota_remaining,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetQuestionCommentsResponse parses an HTTP response from a GetQuestionCommentsWithResponse call
+func ParseGetQuestionCommentsResponse(rsp *http.Response) (*GetQuestionCommentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetQuestionCommentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			HasMore        *bool      `json:"has_more,omitempty"`
+			Items          *[]Comment `json:"items,omitempty"`
+			QuotaMax       *int       `json:"quota_max,omitempty"`
+			QuotaRemaining *int       `json:"quota_remaining,omitempty"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

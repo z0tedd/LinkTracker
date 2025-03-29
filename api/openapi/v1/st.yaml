@@ -95,7 +95,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/IdParam"
         - $ref: "#/components/parameters/OrderParam"
-
+        - $ref: "#/components/parameters/SortParam"
         - $ref: "#/components/parameters/SiteParam"
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/PagesizeParam"
@@ -104,15 +104,6 @@ paths:
         - $ref: "#/components/parameters/MinParam"
         - $ref: "#/components/parameters/MaxParam"
         - $ref: "#/components/parameters/FilterParam"
-
-        - name: sort
-          in: query
-          description: The field to sort by (e.g.,  "creation", "votes").
-          required: false
-          schema:
-            type: string
-            default: creation
-            enum: [creation, votes]
       responses:
         "200":
           description: A successful response containing a list of comments.
@@ -181,8 +172,8 @@ components:
       required: false
       schema:
         type: string
-        default: "withbody"
-
+        default: "!nNPvSN_ZTx"
+        enum: ["!nNPvSN_ZTx", "!nNPvSNdWme"]
     PageParam:
       name: page
       in: query

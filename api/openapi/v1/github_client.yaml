@@ -13,6 +13,48 @@ tags:
     description: Операции с репозиториями
 
 paths:
+  /repos/{owner}/{repo}/issues:
+    get:
+      tags:
+        - Repositories
+      summary: List issues for a specific repository
+      operationId: listIssues
+      parameters:
+        - $ref: "#/components/parameters/ownerParam"
+        - $ref: "#/components/parameters/repoParam"
+      responses:
+        "200":
+          description: A list of issues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListIssuesPulls"
+
+      x-example-curl: |
+        curl https://api.github.com/repos/OWNER/REPO/issues
+
+  /repos/{owner}/{repo}/pulls:
+    get:
+      tags:
+        - Repositories
+      summary: List pull requests for a specific repository
+      operationId: listPullRequests
+      parameters:
+        - $ref: "#/components/parameters/ownerParam"
+        - $ref: "#/components/parameters/repoParam"
+      responses:
+        "200":
+          description: A list of pull requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListIssuesPulls"
+      x-example-curl: |
+        curl https://api.github.com/repos/OWNER/REPO/pulls
   /users/{username}:
     get:
       tags:
@@ -234,6 +276,26 @@ components:
         after:
           type: string
           example: 9d304e89ca1ba8ab3d67a572174d34b7c9a5e533
+
+    ListIssuesPulls:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            login:
+              type: string
+              description: Username of the creator
+        title:
+          type: string
+          description: Title of the issue
+        body:
+          type: string
+          description: Body of the issue
+        created_at:
+          type: string
+          format: date-time
+          description: Creation date of the issue
 
   securitySchemes:
     BearerAuth:

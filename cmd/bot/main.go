@@ -21,16 +21,19 @@ func main() {
 	err := env.Parse(&cfg)
 	if err != nil {
 		logger.Error(("TELEGRAM_BOT_TOKEN is not set"))
+		os.Exit(1)
 	}
 
 	botAPI, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		logger.Error("exiting app, critical error", slog.Any("botAPI", err))
+		os.Exit(1)
 	}
 
 	bot, err := tgbot.NewTrackingBot(botAPI, logger)
 	if err != nil {
-		panic(err)
+		logger.Error("exiting app, critical error", slog.Any("tracking bot", err))
+		os.Exit(1)
 	}
 
 	go bot.Run()

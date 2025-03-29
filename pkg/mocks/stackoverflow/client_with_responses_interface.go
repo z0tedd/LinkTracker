@@ -98,6 +98,81 @@ func (_c *ClientWithResponsesInterface_GetQuestionAnswersWithResponse_Call) RunA
 	return _c
 }
 
+// GetQuestionCommentsWithResponse provides a mock function with given fields: ctx, ids, params, reqEditors
+func (_m *ClientWithResponsesInterface) GetQuestionCommentsWithResponse(ctx context.Context, ids string, params *client.GetQuestionCommentsParams, reqEditors ...client.RequestEditorFn) (*client.GetQuestionCommentsResponse, error) {
+	_va := make([]interface{}, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, ids, params)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetQuestionCommentsWithResponse")
+	}
+
+	var r0 *client.GetQuestionCommentsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, *client.GetQuestionCommentsParams, ...client.RequestEditorFn) (*client.GetQuestionCommentsResponse, error)); ok {
+		return rf(ctx, ids, params, reqEditors...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, *client.GetQuestionCommentsParams, ...client.RequestEditorFn) *client.GetQuestionCommentsResponse); ok {
+		r0 = rf(ctx, ids, params, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.GetQuestionCommentsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, *client.GetQuestionCommentsParams, ...client.RequestEditorFn) error); ok {
+		r1 = rf(ctx, ids, params, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetQuestionCommentsWithResponse'
+type ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call struct {
+	*mock.Call
+}
+
+// GetQuestionCommentsWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - ids string
+//   - params *client.GetQuestionCommentsParams
+//   - reqEditors ...client.RequestEditorFn
+func (_e *ClientWithResponsesInterface_Expecter) GetQuestionCommentsWithResponse(ctx interface{}, ids interface{}, params interface{}, reqEditors ...interface{}) *ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call {
+	return &ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call{Call: _e.mock.On("GetQuestionCommentsWithResponse",
+		append([]interface{}{ctx, ids, params}, reqEditors...)...)}
+}
+
+func (_c *ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call) Run(run func(ctx context.Context, ids string, params *client.GetQuestionCommentsParams, reqEditors ...client.RequestEditorFn)) *ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]client.RequestEditorFn, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(*client.GetQuestionCommentsParams), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call) Return(_a0 *client.GetQuestionCommentsResponse, _a1 error) *ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call) RunAndReturn(run func(context.Context, string, *client.GetQuestionCommentsParams, ...client.RequestEditorFn) (*client.GetQuestionCommentsResponse, error)) *ClientWithResponsesInterface_GetQuestionCommentsWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetQuestionsByIdsWithResponse provides a mock function with given fields: ctx, ids, params, reqEditors
 func (_m *ClientWithResponsesInterface) GetQuestionsByIdsWithResponse(ctx context.Context, ids string, params *client.GetQuestionsByIdsParams, reqEditors ...client.RequestEditorFn) (*client.GetQuestionsByIdsResponse, error) {
 	_va := make([]interface{}, len(reqEditors))
