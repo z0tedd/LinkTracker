@@ -114,7 +114,8 @@ func TestProcessUpdatedSubscription_Success(t *testing.T) {
 
 	mockBot.On("PostUpdatesWithResponse", context.Background(), expectedBody).Return(mockResponse, nil)
 
-	err := processUpdatedSubscription(context.Background(), mockBot, subscription)
+	notificationSender := HttpNotificationSender{botClient: mockBot, ctx: context.Background()}
+	err := notificationSender.Send(subscription)
 	require.NoError(t, err)
 	mockBot.AssertExpectations(t)
 }
@@ -143,7 +144,8 @@ func TestProcessUpdatedSubscription_APIError(t *testing.T) {
 
 	mockBot.On("PostUpdatesWithResponse", context.Background(), expectedBody).Return(mockResponse, nil)
 
-	err := processUpdatedSubscription(context.Background(), mockBot, subscription)
+	notificationSender := HttpNotificationSender{botClient: mockBot, ctx: context.Background()}
+	err := notificationSender.Send(subscription)
 	require.EqualError(t, err, "request data: code: 400, description: Bad Request")
 	mockBot.AssertExpectations(t)
 }
@@ -165,8 +167,8 @@ func TestProcessUpdatedSubscription_RequestError(t *testing.T) {
 	}
 
 	mockBot.On("PostUpdatesWithResponse", context.Background(), expectedBody).Return(nil, fmt.Errorf("network error"))
-
-	err := processUpdatedSubscription(context.Background(), mockBot, subscription)
+	notificationSender := HttpNotificationSender{botClient: mockBot, ctx: context.Background()}
+	err := notificationSender.Send(subscription)
 	require.EqualError(t, err, "post updates: network error")
 	mockBot.AssertExpectations(t)
 }
