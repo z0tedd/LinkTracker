@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
+	"github.com/central-university-dev/go-z0tedd/pkg"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -24,6 +25,7 @@ func NewCreator(logger *slog.Logger, config *domain.Config) Creator {
 
 func (c Creator) Create() (Repository, error) {
 	var repo Repository
+
 	accessType := c.config.AccessType
 
 	switch accessType {
@@ -41,6 +43,7 @@ func (c Creator) Create() (Repository, error) {
 		if err != nil {
 			return nil, fmt.Errorf("orm repository creation: %w", err)
 		}
+
 		repo = NewORMRepository(pool, c.logger)
 	default:
 		repo = NewInMemoryRepository(c.logger)
@@ -108,20 +111,24 @@ func (r *SQLRepository) DeleteUser(userID int64) error {
 	query := `
         SELECT subID FROM users_preferences WHERE userID = $1
     `
+
 	rows, err := tx.Query(context.Background(), query, userID)
 	if err != nil {
 		r.logger.Error("failed to retrieve subIDs for user", "error", err)
 		return fmt.Errorf("failed to retrieve subIDs for user: %w", err)
 	}
+
 	defer rows.Close()
 
 	var subIDs []int64
+
 	for rows.Next() {
 		var subID int64
 		if err := rows.Scan(&subID); err != nil {
 			r.logger.Error("failed to scan subID", "error", err)
 			return fmt.Errorf("failed to scan subID: %w", err)
 		}
+
 		subIDs = append(subIDs, subID)
 	}
 
@@ -137,6 +144,7 @@ func (r *SQLRepository) DeleteUser(userID int64) error {
             SET tgChatIDs = array_remove(tgChatIDs, $1)
             WHERE subID = $2
         `
+
 		_, err := tx.Exec(context.Background(), updateQuery, userID, subID)
 		if err != nil {
 			r.logger.Error("failed to remove userID from tgChatIDs", "error", err)
@@ -148,6 +156,7 @@ func (r *SQLRepository) DeleteUser(userID int64) error {
 	deleteQuery := `
         DELETE FROM users_preferences WHERE userID = $1
     `
+
 	_, err = tx.Exec(context.Background(), deleteQuery, userID)
 	if err != nil {
 		r.logger.Error("failed to delete user preferences", "error", err)
@@ -217,6 +226,7 @@ func (r *SQLRepository) AddSubscription(userID int64, sub domain.Subscription, s
 
 	// Step 1: Check if a subscription with the same URL exists
 	var subID int64
+
 	query := `
         SELECT subID FROM subscriptions WHERE url = $1
     `
@@ -238,6 +248,7 @@ func (r *SQLRepository) AddSubscription(userID int64, sub domain.Subscription, s
             INSERT INTO subscriptions (subID, url, tgChatIDs, lastActivity)
             VALUES ($1, $2, $3, $4::JSONB)
         `
+
 		_, err = tx.Exec(context.Background(), insertQuery, subID, sub.URL, []int64{userID}, lastActivityJSON)
 		if err != nil {
 			r.logger.Error("failed to insert new subscription", "error", err)
@@ -253,6 +264,7 @@ func (r *SQLRepository) AddSubscription(userID int64, sub domain.Subscription, s
             SET tgChatIDs = array_append(tgChatIDs, $1)
             WHERE subID = $2 AND NOT ($1 = ANY(tgChatIDs))
         `
+
 		_, err = tx.Exec(context.Background(), updateQuery, userID, subID)
 		if err != nil {
 			r.logger.Error("failed to update subscription tgChatIDs", "error", err)
@@ -269,7 +281,8 @@ func (r *SQLRepository) AddSubscription(userID int64, sub domain.Subscription, s
             tags = EXCLUDED.tags,
             url = EXCLUDED.url
     `
-	_, err = tx.Exec(context.Background(), prefQuery, userID, subID, convertToArray(subPreferences.Filters), subPreferences.Tags, subPreferences.URL)
+
+	_, err = tx.Exec(context.Background(), prefQuery, userID, subID, pkg.ConvertToArray(subPreferences.Filters), subPreferences.Tags, subPreferences.URL)
 	if err != nil {
 		r.logger.Error("failed to add user preferences", "error", err)
 		return fmt.Errorf("failed to add user preferences: %w", err)
@@ -294,13 +307,17 @@ func (r *SQLRepository) RemoveSubscription(userID int64, link string) error {
 
 	// Find subscription ID by URL
 	var subID int64
+
 	query := `SELECT subID FROM subscriptions WHERE url = $1`
+
 	err = tx.QueryRow(context.Background(), query, link).Scan(&subID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errors.New("subscription not found")
 		}
+
 		r.logger.Error("failed to find subscription", "error", err)
+
 		return fmt.Errorf("failed to find subscription: %w", err)
 	}
 
@@ -310,6 +327,7 @@ func (r *SQLRepository) RemoveSubscription(userID int64, link string) error {
         SET tgChatIDs = array_remove(tgChatIDs, $1)
         WHERE subID = $2
     `
+
 	_, err = tx.Exec(context.Background(), updateQuery, userID, subID)
 	if err != nil {
 		r.logger.Error("failed to remove user from subscription", "error", err)
@@ -321,6 +339,7 @@ func (r *SQLRepository) RemoveSubscription(userID int64, link string) error {
         DELETE FROM users_preferences
         WHERE userID = $1 AND subID = $2
     `
+
 	_, err = tx.Exec(context.Background(), deleteQuery, userID, subID)
 	if err != nil {
 		r.logger.Error("failed to remove user preferences", "error", err)
@@ -331,6 +350,7 @@ func (r *SQLRepository) RemoveSubscription(userID int64, link string) error {
 		r.logger.Error("failed to commit transaction", "error", err)
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
 	return nil
 }
 
@@ -341,22 +361,27 @@ func (r *SQLRepository) GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPr
         FROM users_preferences
         WHERE userID = $1
     `
+
 	rows, err := r.db.Query(context.Background(), query, tgChatID)
 	if err != nil {
 		r.logger.Error("failed to get subscriptions for user", "error", err)
 		return nil, fmt.Errorf("failed to get subscriptions for user: %w", err)
 	}
+
 	defer rows.Close()
 
 	var result []domain.UserPreferences
+
 	for rows.Next() {
 		var prefs domain.UserPreferences
+
 		var filters []string
 		if err := rows.Scan(&prefs.SubID, &filters, &prefs.Tags, &prefs.URL); err != nil {
 			r.logger.Error("failed to scan user preferences", "error", err)
 			return nil, fmt.Errorf("failed to scan user preferences: %w", err)
 		}
-		prefs.Filters = convertToMap(filters)
+
+		prefs.Filters = pkg.ConvertToMap(filters)
 		result = append(result, prefs)
 	}
 
@@ -378,12 +403,15 @@ func (r *SQLRepository) GetSubscription(subID int64) (domain.Subscription, error
 	row := r.db.QueryRow(context.Background(), query, subID)
 
 	var sub domain.Subscription
+
 	var lastActivityJSON []byte
 	if err := row.Scan(&sub.ID, &sub.URL, &sub.TgChatIDs, &lastActivityJSON); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Subscription{}, errors.New("subscription not found")
 		}
+
 		r.logger.Error("failed to get subscription", "error", err)
+
 		return domain.Subscription{}, fmt.Errorf("failed to get subscription: %w", err)
 	}
 
@@ -397,7 +425,7 @@ func (r *SQLRepository) GetSubscription(subID int64) (domain.Subscription, error
 }
 
 // UpdateSubscription updates a subscription.
-func (r *SQLRepository) UpdateSubscription(subID int64, newSub domain.Subscription) error {
+func (r *SQLRepository) UpdateSubscription(subID int64, newSub *domain.Subscription) error {
 	query := `
         UPDATE subscriptions
         SET url = $1, tgChatIDs = $2, lastActivity = $3::JSONB
@@ -417,6 +445,7 @@ func (r *SQLRepository) UpdateSubscription(subID int64, newSub domain.Subscripti
 		r.logger.Error("failed to update subscription", "error", err)
 		return fmt.Errorf("failed to update subscription: %w", err)
 	}
+
 	return nil
 }
 
@@ -427,6 +456,7 @@ func (r *SQLRepository) UpdateSubscriptionActivity(subID int64, newActivity doma
         SET lastActivity = $1::JSONB
         WHERE subID = $2
     `
+
 	activityJSON, err := json.Marshal(newActivity)
 	if err != nil {
 		r.logger.Error("failed to serialize activity", "error", err)
@@ -438,6 +468,7 @@ func (r *SQLRepository) UpdateSubscriptionActivity(subID int64, newActivity doma
 		r.logger.Error("failed to update subscription activity", "error", err)
 		return fmt.Errorf("failed to update subscription activity: %w", err)
 	}
+
 	return nil
 }
 
@@ -446,20 +477,24 @@ func (r *SQLRepository) GetSubsID() domain.Set {
 	query := `
         SELECT subID FROM subscriptions
     `
+
 	rows, err := r.db.Query(context.Background(), query)
 	if err != nil {
 		r.logger.Error("failed to get subscription IDs", "error", err)
 		return nil
 	}
+
 	defer rows.Close()
 
 	result := make(domain.Set)
+
 	for rows.Next() {
 		var subID int64
 		if err := rows.Scan(&subID); err != nil {
 			r.logger.Error("failed to scan subscription ID", "error", err)
 			return nil
 		}
+
 		result.Add(subID)
 	}
 

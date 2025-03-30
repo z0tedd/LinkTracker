@@ -101,8 +101,8 @@ func TestGetSubscriptionsForUser(t *testing.T) {
 	subs, err := repo.GetSubscriptionsForUser(userID)
 	assert.NoError(t, err)
 	assert.Len(t, subs, 2)
-	assert.Equal(t, subPrefs1.SubID, subs[0].SubID)
-	assert.Equal(t, subPrefs2.SubID, subs[1].SubID)
+	assert.Contains(t, subs, subPrefs1)
+	assert.Contains(t, subs, subPrefs2)
 
 	// Non-existing user
 	_, err = repo.GetSubscriptionsForUser(999)
@@ -131,7 +131,7 @@ func TestUpdateSubscription(t *testing.T) {
 	repo.subsByID[subID] = originalSub
 
 	newSub := domain.Subscription{ID: subID, URL: "http://new.com"}
-	err := repo.UpdateSubscription(subID, newSub)
+	err := repo.UpdateSubscription(subID, &newSub)
 	assert.NoError(t, err)
 
 	storedSub, _ := repo.GetSubscription(subID)
@@ -271,7 +271,7 @@ func TestUpdateSubscription_URLUpdate(t *testing.T) {
 		ID:  subID,
 		URL: newURL,
 	}
-	err := repo.UpdateSubscription(subID, newSub)
+	err := repo.UpdateSubscription(subID, &newSub)
 	assert.NoError(t, err)
 
 	// Проверяем обновленный URL

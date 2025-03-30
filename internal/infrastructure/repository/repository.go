@@ -18,7 +18,7 @@ type Repository interface {
 	RemoveSubscription(userID int64, link string) error
 	GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error)
 	GetSubscription(subID int64) (domain.Subscription, error)
-	UpdateSubscription(subID int64, newSub domain.Subscription) error
+	UpdateSubscription(subID int64, newSub *domain.Subscription) error
 	UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error
 	GetSubsID() domain.Set
 }
@@ -81,8 +81,7 @@ func (r *InMemoryRepository) DeleteUser(userID int64) error {
 	return nil
 }
 
-// AddSubscription adds a new subscription for a user.
-// Ищем подписку по ссылке, нет? => создаем, иначе просто апдейтим, и в отдельную мапу(таблицу) кидаем преференсы
+// Ищем подписку по ссылке, нет? => создаем, иначе просто апдейтим, и в отдельную мапу(таблицу) кидаем преференсы.
 func (r *InMemoryRepository) AddSubscription(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -159,7 +158,7 @@ func (r *InMemoryRepository) GetSubscription(subID int64) (domain.Subscription, 
 }
 
 // UpdateSubscription updates a subscription.
-func (r *InMemoryRepository) UpdateSubscription(subID int64, newSub domain.Subscription) error {
+func (r *InMemoryRepository) UpdateSubscription(subID int64, newSub *domain.Subscription) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -167,7 +166,7 @@ func (r *InMemoryRepository) UpdateSubscription(subID int64, newSub domain.Subsc
 		return errors.New("subscription not found")
 	}
 
-	r.subsByID[subID] = newSub
+	r.subsByID[subID] = *newSub
 
 	return nil
 }
@@ -217,7 +216,7 @@ func (r *InMemoryRepository) createNewID() int64 {
 	return atomic.AddInt64(&r.idCounter, 1)
 }
 
-// updateSubscriptionUsers просто добавляет в конец подписки ID пользователя и обновляет репозиторий
+// updateSubscriptionUsers просто добавляет в конец подписки ID пользователя и обновляет репозиторий.
 func (r *InMemoryRepository) updateSubscriptionUsers(subID, userID int64) error {
 	sub, exists := r.subsByID[subID]
 	if !exists {
