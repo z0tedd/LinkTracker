@@ -9,20 +9,20 @@ import (
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
 )
 
-type Repository interface {
+type SubscriptionRepository interface {
 	GetSubsID() domain.Set
 	GetSubscription(subID int64) (domain.Subscription, error)
 	UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error
 }
 
 type Checker struct {
-	repo               Repository
+	repo               SubscriptionRepository
 	logger             *slog.Logger
 	notificationSender notification.Sender
 	activityFetcher    fetchers.ActivityFetcher
 }
 
-func NewChecker(logger *slog.Logger, repo Repository) (*Checker, error) {
+func NewChecker(logger *slog.Logger, repo SubscriptionRepository) (*Checker, error) {
 	notificationSender, err := notification.NewHTTPNotificationSender(logger)
 	if err != nil {
 		logger.Error("notification sender create", "error", err)

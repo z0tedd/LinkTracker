@@ -53,18 +53,6 @@ func (c Creator) Create() (Repository, error) {
 	return repo, nil
 }
 
-//	type Repository interface {
-//		RegisterUser(userID int64) error -
-//		DeleteUser(userID int64) error -
-//		AddSubscription(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences) error -
-//		RemoveSubscription(userID int64, link string) error -
-//		GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error)
-//		GetSubscription(subID int64) (domain.Subscription, error)
-//		UpdateSubscription(subID int64, newSub domain.Subscription) error
-//		UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error
-//		GetSubsID() domain.Set
-//	}
-//
 // SQLRepository implements the Repository interface using PostgreSQL.
 type SQLRepository struct {
 	db     *pgxpool.Pool
@@ -84,20 +72,6 @@ func (r *SQLRepository) RegisterUser(userID int64) error {
 	r.logger.Debug("user registration", "userID", userID)
 	return nil
 }
-
-// DeleteUser deletes a user and removes their preferences.
-//
-//	func (r *SQLRepository) DeleteUser(userID int64) error {
-//		query := `
-//	        DELETE FROM users_preferences WHERE userID = $1
-//	    `
-//		_, err := r.db.Exec(context.Background(), query, userID)
-//		if err != nil {
-//			r.logger.Error("failed to delete user", "error", err)
-//			return fmt.Errorf("failed to delete user: %w", err)
-//		}
-//		return nil
-//	}
 
 //nolint:dupl //SQL and ORM repository has the same logic, but in specification we must create the same modules
 func (r *SQLRepository) DeleteUser(userID int64) error {
@@ -205,131 +179,6 @@ func (r *SQLRepository) deleteUserPreferences(tx pgx.Tx, userID int64) error {
 	return nil
 }
 
-// DeleteUser deletes a user and removes their preferences.
-// func (r *SQLRepository) DeleteUser(userID int64) error {
-// 	tx, err := r.db.Begin(context.Background())
-// 	if err != nil {
-// 		r.logger.Error("failed to begin transaction", "error", err)
-// 		return fmt.Errorf("failed to begin transaction: %w", err)
-// 	}
-//
-// 	defer func() {
-// 		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
-// 			r.logger.Error("failed to rollback", "error", rollbackErr)
-// 		}
-// 	}()
-//
-// 	// Step 1: Retrieve all subIDs associated with the user
-// 	query := `
-//         SELECT subID FROM users_preferences WHERE userID = $1
-//     `
-//
-// 	rows, err := tx.Query(context.Background(), query, userID)
-// 	if err != nil {
-// 		r.logger.Error("failed to retrieve subIDs for user", "error", err)
-// 		return fmt.Errorf("failed to retrieve subIDs for user: %w", err)
-// 	}
-//
-// 	defer rows.Close()
-//
-// 	var subIDs []int64
-//
-// 	for rows.Next() {
-// 		var subID int64
-// 		if err := rows.Scan(&subID); err != nil {
-// 			r.logger.Error("failed to scan subID", "error", err)
-// 			return fmt.Errorf("failed to scan subID: %w", err)
-// 		}
-//
-// 		subIDs = append(subIDs, subID)
-// 	}
-//
-// 	if err := rows.Err(); err != nil {
-// 		r.logger.Error("row iteration error", "error", err)
-// 		return fmt.Errorf("row iteration error: %w", err)
-// 	}
-//
-// 	// Step 2: Remove the userID from tgChatIDs for each subID
-// 	for _, subID := range subIDs {
-// 		updateQuery := `
-//             UPDATE subscriptions
-//             SET tgChatIDs = array_remove(tgChatIDs, $1)
-//             WHERE subID = $2
-//         `
-//
-// 		_, err := tx.Exec(context.Background(), updateQuery, userID, subID)
-// 		if err != nil {
-// 			r.logger.Error("failed to remove userID from tgChatIDs", "error", err)
-// 			return fmt.Errorf("failed to remove userID from tgChatIDs: %w", err)
-// 		}
-// 	}
-//
-// 	// Step 3: Delete the user's preferences from the users_preferences table
-// 	deleteQuery := `
-//         DELETE FROM users_preferences WHERE userID = $1
-//     `
-//
-// 	_, err = tx.Exec(context.Background(), deleteQuery, userID)
-// 	if err != nil {
-// 		r.logger.Error("failed to delete user preferences", "error", err)
-// 		return fmt.Errorf("failed to delete user preferences: %w", err)
-// 	}
-//
-// 	// Commit the transaction
-// 	if err := tx.Commit(context.Background()); err != nil {
-// 		r.logger.Error("failed to commit transaction", "error", err)
-// 		return fmt.Errorf("failed to commit transaction: %w", err)
-// 	}
-//
-// 	return nil
-// }
-
-// AddSubscription adds a new subscription for a user.
-//
-//	func (r *SQLRepository) AddSubscription(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences) error {
-//		tx, err := r.db.Begin(context.Background())
-//		if err != nil {
-//			return fmt.Errorf("failed to begin transaction: %w", err)
-//		}
-//		defer tx.Rollback(context.Background())
-//
-//		// Insert or update subscription
-//		subQuery := `
-//	        INSERT INTO subscriptions (subID, url, tgChatIDs, lastActivity)
-//	        VALUES ($1, $2, $3, $4::JSONB)
-//	        ON CONFLICT (subID) DO UPDATE SET
-//	            url = EXCLUDED.url,
-//	            tgChatIDs = EXCLUDED.tgChatIDs,
-//	            lastActivity = EXCLUDED.lastActivity
-//	    `
-//		_, err = tx.Exec(context.Background(), subQuery, sub.ID, sub.URL, sub.TgChatIDs, sub.LastActivity)
-//		if err != nil {
-//			r.logger.Error("failed to add subscription", "error", err)
-//			return fmt.Errorf("failed to add subscription: %w", err)
-//		}
-//
-//		// Insert user preferences
-//		prefQuery := `
-//	        INSERT INTO users_preferences (userID, subID, filters, tags, url)
-//	        VALUES ($1, $2, $3, $4, $5)
-//	        ON CONFLICT (userID, subID) DO UPDATE SET
-//	            filters = EXCLUDED.filters,
-//	            tags = EXCLUDED.tags,
-//	            url = EXCLUDED.url
-//	    `
-//		_, err = tx.Exec(context.Background(), prefQuery, userID, sub.ID, subPreferences.Filters, subPreferences.Tags, subPreferences.URL)
-//		if err != nil {
-//			r.logger.Error("failed to add user preferences", "error", err)
-//			return fmt.Errorf("failed to add user preferences: %w", err)
-//		}
-//
-//		if err := tx.Commit(context.Background()); err != nil {
-//			r.logger.Error("failed to commit transaction", "error", err)
-//			return fmt.Errorf("failed to commit transaction: %w", err)
-//		}
-//		return nil
-//	}
-//
 //nolint:dupl //SQL and ORM repository has the same logic, but in specification we must create the same modules
 func (r *SQLRepository) AddSubscription(userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error {
 	tx, err := r.db.Begin(context.Background())
