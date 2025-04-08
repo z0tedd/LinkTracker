@@ -93,6 +93,7 @@ const (
 // Answer defines model for Answer.
 type Answer struct {
 	AnswerId         *int    `json:"answer_id,omitempty"`
+	Body             *string `json:"body,omitempty"`
 	ContentLicense   *string `json:"content_license,omitempty"`
 	CreationDate     *int    `json:"creation_date,omitempty"`
 	IsAccepted       *bool   `json:"is_accepted,omitempty"`

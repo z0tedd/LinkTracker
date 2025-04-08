@@ -7,15 +7,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo/v4"
+
 	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/server"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
-	"github.com/labstack/echo/v4"
 )
 
 type Repository interface {
 	RegisterUser(userID int64) error
 	DeleteUser(userID int64) error
-	AddSubscription(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences) error
+	AddSubscription(userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error
 	RemoveSubscription(userID int64, link string) error
 	GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error)
 }
@@ -98,7 +99,7 @@ func (s *ScrapperServer) PostLinks(ctx echo.Context, params server.PostLinksPara
 		URL:     *requestBody.Link,
 	}
 
-	err := s.repo.AddSubscription(params.TgChatId, sub, subPreferences)
+	err := s.repo.AddSubscription(params.TgChatId, &sub, subPreferences)
 	if err != nil {
 		s.logger.Error("Failed to add subscription to repository",
 			"tg_chat_id", params.TgChatId,

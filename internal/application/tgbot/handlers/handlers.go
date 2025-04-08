@@ -8,10 +8,11 @@ import (
 	"net/http"
 	"strings"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client"
 	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/helpers"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func helpMessage() string {

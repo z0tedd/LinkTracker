@@ -49,7 +49,7 @@ linters-settings:
     lines: 70
     statements: 50
   goimports:
-    local-prefixes: PLACE_YOUR_PACKAGE_NAME
+    local-prefixes: github.com/central-university-dev/go-z0tedd
   gocritic:
     enabled-tags:
       - style
@@ -69,3 +69,5 @@ issues:
       linters:
         - gocritic
       text: 'hugeParam\: \S+ is heavy \(\d+ bytes\)\; consider passing it by pointer'
+  exclude-dirs:
+    - /home/z0tedd/Documents/go-z0tedd/pgdata

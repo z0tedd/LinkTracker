@@ -8,15 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/central-university-dev/go-z0tedd/internal/domain"
-	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
 	"github.com/jackc/pgx/v5/pgxpool"
 	testcontainers "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/central-university-dev/go-z0tedd/internal/domain"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
 )
 
 // setupPostgresContainer starts a PostgreSQL container and returns a connection pool.
-func setupPostgresContainer(t *testing.T) (*pgxpool.Pool, func()) {
+func setupPostgresContainer(t *testing.T) (pool *pgxpool.Pool, cleanup func()) {
 	ctx := context.Background()
 
 	// Define PostgreSQL container request
@@ -57,7 +58,7 @@ func setupPostgresContainer(t *testing.T) (*pgxpool.Pool, func()) {
 	t.Log(host, port.Port())
 
 	// Connect to the database
-	pool, err := pgxpool.New(ctx, connString)
+	pool, err = pgxpool.New(ctx, connString)
 	if err != nil {
 		t.Fatalf("failed to connect to PostgreSQL: %v", err)
 	}
@@ -83,7 +84,7 @@ func setupPostgresContainer(t *testing.T) (*pgxpool.Pool, func()) {
 	}
 
 	// Cleanup function
-	cleanup := func() {
+	cleanup = func() {
 		pool.Close()
 
 		if err := container.Terminate(ctx); err != nil {
@@ -198,7 +199,7 @@ func TestAddSubscription(t *testing.T) {
 		URL:     "http://example.com",
 	}
 
-	err := repo.AddSubscription(12345, sub, prefs)
+	err := repo.AddSubscription(12345, &sub, prefs)
 	if err != nil {
 		t.Fatalf("AddSubscription failed: %v", err)
 	}

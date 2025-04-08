@@ -14,7 +14,7 @@ import (
 type Repository interface {
 	RegisterUser(userID int64) error
 	DeleteUser(userID int64) error
-	AddSubscription(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences) error
+	AddSubscription(userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error
 	RemoveSubscription(userID int64, link string) error
 	GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error)
 	GetSubscription(subID int64) (domain.Subscription, error)
@@ -82,7 +82,7 @@ func (r *InMemoryRepository) DeleteUser(userID int64) error {
 }
 
 // Ищем подписку по ссылке, нет? => создаем, иначе просто апдейтим, и в отдельную мапу(таблицу) кидаем преференсы.
-func (r *InMemoryRepository) AddSubscription(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences) error {
+func (r *InMemoryRepository) AddSubscription(userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -90,7 +90,7 @@ func (r *InMemoryRepository) AddSubscription(userID int64, sub domain.Subscripti
 	if err != nil {
 		subID = r.createNewID()
 		sub.ID = subID
-		r.subsByID[subID] = sub
+		r.subsByID[subID] = *sub
 		r.subscriptions.Add(subID)
 	}
 

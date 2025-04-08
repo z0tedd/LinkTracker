@@ -5,10 +5,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/server"
-	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/helpers"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/labstack/echo/v4"
+
+	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/server"
+	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/helpers"
 )
 
 type BotServer struct {

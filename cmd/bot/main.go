@@ -5,12 +5,13 @@ import (
 	"os"
 
 	"github.com/caarlos0/env/v11"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/labstack/echo/v4"
+
 	unimplemented_server "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/server"
 	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot"
 	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/server"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/labstack/echo/v4"
 )
 
 func main() {

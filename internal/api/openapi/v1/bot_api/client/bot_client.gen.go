@@ -285,7 +285,6 @@ func ParsePostUpdatesResponse(rsp *http.Response) (*PostUpdatesResponse, error) 
 			return nil, err
 		}
 		response.JSON400 = &dest
-
 	}
 
 	return response, nil

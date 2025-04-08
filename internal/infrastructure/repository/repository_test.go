@@ -5,8 +5,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/central-university-dev/go-z0tedd/internal/domain"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/central-university-dev/go-z0tedd/internal/domain"
 )
 
 func TestRegisterUser(t *testing.T) {
@@ -27,7 +28,7 @@ func TestDeleteUser(t *testing.T) {
 	_ = repo.RegisterUser(userID)
 
 	sub := domain.Subscription{URL: "http://example.com"}
-	_ = repo.AddSubscription(userID, sub, domain.UserPreferences{})
+	_ = repo.AddSubscription(userID, &sub, domain.UserPreferences{})
 
 	err := repo.DeleteUser(userID)
 	assert.NoError(t, err)
@@ -48,7 +49,7 @@ func TestAddSubscription(t *testing.T) {
 	sub := domain.Subscription{URL: "http://example.com"}
 	subPrefs := domain.UserPreferences{SubID: 5}
 
-	err := repo.AddSubscription(userID, sub, subPrefs)
+	err := repo.AddSubscription(userID, &sub, subPrefs)
 	assert.NoError(t, err)
 
 	subID, _ := repo.findSubByLink(sub.URL)
@@ -58,7 +59,7 @@ func TestAddSubscription(t *testing.T) {
 
 	// Add another subscription with same URL
 	newPrefs := domain.UserPreferences{SubID: 10}
-	err = repo.AddSubscription(userID, sub, newPrefs)
+	err = repo.AddSubscription(userID, &sub, newPrefs)
 	assert.NoError(t, err)
 
 	storedPrefs = repo.userPreferencesByTgChatID[userID][subID]
@@ -72,7 +73,7 @@ func TestRemoveSubscription(t *testing.T) {
 	_ = repo.RegisterUser(userID)
 
 	sub := domain.Subscription{URL: "http://example.com"}
-	_ = repo.AddSubscription(userID, sub, domain.UserPreferences{})
+	_ = repo.AddSubscription(userID, &sub, domain.UserPreferences{})
 
 	subID, _ := repo.findSubByLink(sub.URL)
 	err := repo.RemoveSubscription(userID, sub.URL)
@@ -92,11 +93,11 @@ func TestGetSubscriptionsForUser(t *testing.T) {
 
 	sub1 := domain.Subscription{URL: "http://example.com/1"}
 	subPrefs1 := domain.UserPreferences{SubID: 1}
-	_ = repo.AddSubscription(userID, sub1, subPrefs1)
+	_ = repo.AddSubscription(userID, &sub1, subPrefs1)
 
 	sub2 := domain.Subscription{URL: "http://example.com/2"}
 	subPrefs2 := domain.UserPreferences{SubID: 2}
-	_ = repo.AddSubscription(userID, sub2, subPrefs2)
+	_ = repo.AddSubscription(userID, &sub2, subPrefs2)
 
 	subs, err := repo.GetSubscriptionsForUser(userID)
 	assert.NoError(t, err)
@@ -170,7 +171,7 @@ func TestAddSubscription_UserNotRegistered(t *testing.T) {
 	sub := domain.Subscription{URL: "http://example.com"}
 	subPrefs := domain.UserPreferences{}
 
-	err := repo.AddSubscription(userID, sub, subPrefs)
+	err := repo.AddSubscription(userID, &sub, subPrefs)
 	assert.Error(t, err)
 }
 
@@ -184,7 +185,7 @@ func TestAddSubscription_URLIsStored(t *testing.T) {
 	sub := domain.Subscription{URL: subURL}
 	subPrefs := domain.UserPreferences{}
 
-	err := repo.AddSubscription(userID, sub, subPrefs)
+	err := repo.AddSubscription(userID, &sub, subPrefs)
 	assert.NoError(t, err)
 
 	subID, _ := repo.findSubByLink(subURL)
@@ -208,7 +209,7 @@ func TestAddSubscription_UserPreferencesFields(t *testing.T) {
 		Filters: expectedFilters,
 	}
 
-	err := repo.AddSubscription(userID, sub, subPrefs)
+	err := repo.AddSubscription(userID, &sub, subPrefs)
 	assert.NoError(t, err)
 
 	// Получаем все подписки пользователя и проверяем поля
@@ -235,7 +236,7 @@ func TestAddSubscription_UpdatingUserPreferences(t *testing.T) {
 		Tags:    []string{"old_tag"},
 		Filters: map[string]string{"old_key": "old_value"},
 	}
-	err := repo.AddSubscription(userID, sub, initialPrefs)
+	err := repo.AddSubscription(userID, &sub, initialPrefs)
 	assert.NoError(t, err)
 
 	// Второе добавление с обновленными данными
@@ -244,7 +245,7 @@ func TestAddSubscription_UpdatingUserPreferences(t *testing.T) {
 		Tags:    []string{"new_tag"},
 		Filters: map[string]string{"new_key": "new_value"},
 	}
-	err = repo.AddSubscription(userID, sub, updatedPrefs)
+	err = repo.AddSubscription(userID, &sub, updatedPrefs)
 	assert.NoError(t, err)
 
 	// Проверяем, что данные обновились
@@ -287,7 +288,7 @@ func TestAddSubscription_NewSubscription_URL(t *testing.T) {
 
 	subURL := "https://new-subscription.com"
 	sub := domain.Subscription{URL: subURL}
-	err := repo.AddSubscription(userID, sub, domain.UserPreferences{})
+	err := repo.AddSubscription(userID, &sub, domain.UserPreferences{})
 	assert.NoError(t, err)
 
 	subID, _ := repo.findSubByLink(subURL)
@@ -303,7 +304,7 @@ func TestRemoveSubscription_UserPreferencesRemoved(t *testing.T) {
 
 	sub := domain.Subscription{URL: "https://remove.example.com"}
 	subPrefs := domain.UserPreferences{SubID: 1, Tags: []string{"tag"}}
-	err := repo.AddSubscription(userID, sub, subPrefs)
+	err := repo.AddSubscription(userID, &sub, subPrefs)
 	assert.NoError(t, err)
 
 	// Удаляем подписку

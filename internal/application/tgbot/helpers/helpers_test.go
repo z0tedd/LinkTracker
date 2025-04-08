@@ -3,8 +3,9 @@ package helpers_test
 import (
 	"testing"
 
-	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/helpers"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/helpers"
 )
 
 func TestIsSupported(t *testing.T) {

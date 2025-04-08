@@ -8,10 +8,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/central-university-dev/go-z0tedd/internal/domain"
-	"github.com/central-university-dev/go-z0tedd/pkg"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/central-university-dev/go-z0tedd/internal/domain"
+	"github.com/central-university-dev/go-z0tedd/pkg"
 )
 
 type Creator struct {
@@ -98,16 +99,47 @@ func (r *SQLRepository) RegisterUser(userID int64) error {
 //		return nil
 //	}
 
-// DeleteUser deletes a user and removes their preferences.
+//nolint:dupl //SQL and ORM repository has the same logic, but in specification we must create the same modules
 func (r *SQLRepository) DeleteUser(userID int64) error {
 	tx, err := r.db.Begin(context.Background())
 	if err != nil {
 		r.logger.Error("failed to begin transaction", "error", err)
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(context.Background())
+
+	defer func() {
+		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
+			r.logger.Error("failed to rollback", "error", rollbackErr)
+		}
+	}()
 
 	// Step 1: Retrieve all subIDs associated with the user
+	subIDs, err := r.retrieveSubIDsForUser(tx, userID)
+	if err != nil {
+		return err
+	}
+
+	// Step 2: Remove the userID from tgChatIDs for each subID
+	if err := r.removeUserIDFromTgChatIDs(tx, userID, subIDs); err != nil {
+		return err
+	}
+
+	// Step 3: Delete the user's preferences from the users_preferences table
+	if err := r.deleteUserPreferences(tx, userID); err != nil {
+		return err
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(context.Background()); err != nil {
+		r.logger.Error("failed to commit transaction", "error", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// Helper function to retrieve subIDs for a user.
+func (r *SQLRepository) retrieveSubIDsForUser(tx pgx.Tx, userID int64) ([]int64, error) {
 	query := `
         SELECT subID FROM users_preferences WHERE userID = $1
     `
@@ -115,9 +147,8 @@ func (r *SQLRepository) DeleteUser(userID int64) error {
 	rows, err := tx.Query(context.Background(), query, userID)
 	if err != nil {
 		r.logger.Error("failed to retrieve subIDs for user", "error", err)
-		return fmt.Errorf("failed to retrieve subIDs for user: %w", err)
+		return nil, fmt.Errorf("failed to retrieve subIDs for user: %w", err)
 	}
-
 	defer rows.Close()
 
 	var subIDs []int64
@@ -126,7 +157,7 @@ func (r *SQLRepository) DeleteUser(userID int64) error {
 		var subID int64
 		if err := rows.Scan(&subID); err != nil {
 			r.logger.Error("failed to scan subID", "error", err)
-			return fmt.Errorf("failed to scan subID: %w", err)
+			return nil, fmt.Errorf("failed to scan subID: %w", err)
 		}
 
 		subIDs = append(subIDs, subID)
@@ -134,10 +165,14 @@ func (r *SQLRepository) DeleteUser(userID int64) error {
 
 	if err := rows.Err(); err != nil {
 		r.logger.Error("row iteration error", "error", err)
-		return fmt.Errorf("row iteration error: %w", err)
+		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 
-	// Step 2: Remove the userID from tgChatIDs for each subID
+	return subIDs, nil
+}
+
+// Helper function to remove userID from tgChatIDs for each subscription.
+func (r *SQLRepository) removeUserIDFromTgChatIDs(tx pgx.Tx, userID int64, subIDs []int64) error {
 	for _, subID := range subIDs {
 		updateQuery := `
             UPDATE subscriptions
@@ -152,25 +187,102 @@ func (r *SQLRepository) DeleteUser(userID int64) error {
 		}
 	}
 
-	// Step 3: Delete the user's preferences from the users_preferences table
+	return nil
+}
+
+// Helper function to delete user preferences.
+func (r *SQLRepository) deleteUserPreferences(tx pgx.Tx, userID int64) error {
 	deleteQuery := `
         DELETE FROM users_preferences WHERE userID = $1
     `
 
-	_, err = tx.Exec(context.Background(), deleteQuery, userID)
+	_, err := tx.Exec(context.Background(), deleteQuery, userID)
 	if err != nil {
 		r.logger.Error("failed to delete user preferences", "error", err)
 		return fmt.Errorf("failed to delete user preferences: %w", err)
 	}
 
-	// Commit the transaction
-	if err := tx.Commit(context.Background()); err != nil {
-		r.logger.Error("failed to commit transaction", "error", err)
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
 	return nil
 }
+
+// DeleteUser deletes a user and removes their preferences.
+// func (r *SQLRepository) DeleteUser(userID int64) error {
+// 	tx, err := r.db.Begin(context.Background())
+// 	if err != nil {
+// 		r.logger.Error("failed to begin transaction", "error", err)
+// 		return fmt.Errorf("failed to begin transaction: %w", err)
+// 	}
+//
+// 	defer func() {
+// 		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
+// 			r.logger.Error("failed to rollback", "error", rollbackErr)
+// 		}
+// 	}()
+//
+// 	// Step 1: Retrieve all subIDs associated with the user
+// 	query := `
+//         SELECT subID FROM users_preferences WHERE userID = $1
+//     `
+//
+// 	rows, err := tx.Query(context.Background(), query, userID)
+// 	if err != nil {
+// 		r.logger.Error("failed to retrieve subIDs for user", "error", err)
+// 		return fmt.Errorf("failed to retrieve subIDs for user: %w", err)
+// 	}
+//
+// 	defer rows.Close()
+//
+// 	var subIDs []int64
+//
+// 	for rows.Next() {
+// 		var subID int64
+// 		if err := rows.Scan(&subID); err != nil {
+// 			r.logger.Error("failed to scan subID", "error", err)
+// 			return fmt.Errorf("failed to scan subID: %w", err)
+// 		}
+//
+// 		subIDs = append(subIDs, subID)
+// 	}
+//
+// 	if err := rows.Err(); err != nil {
+// 		r.logger.Error("row iteration error", "error", err)
+// 		return fmt.Errorf("row iteration error: %w", err)
+// 	}
+//
+// 	// Step 2: Remove the userID from tgChatIDs for each subID
+// 	for _, subID := range subIDs {
+// 		updateQuery := `
+//             UPDATE subscriptions
+//             SET tgChatIDs = array_remove(tgChatIDs, $1)
+//             WHERE subID = $2
+//         `
+//
+// 		_, err := tx.Exec(context.Background(), updateQuery, userID, subID)
+// 		if err != nil {
+// 			r.logger.Error("failed to remove userID from tgChatIDs", "error", err)
+// 			return fmt.Errorf("failed to remove userID from tgChatIDs: %w", err)
+// 		}
+// 	}
+//
+// 	// Step 3: Delete the user's preferences from the users_preferences table
+// 	deleteQuery := `
+//         DELETE FROM users_preferences WHERE userID = $1
+//     `
+//
+// 	_, err = tx.Exec(context.Background(), deleteQuery, userID)
+// 	if err != nil {
+// 		r.logger.Error("failed to delete user preferences", "error", err)
+// 		return fmt.Errorf("failed to delete user preferences: %w", err)
+// 	}
+//
+// 	// Commit the transaction
+// 	if err := tx.Commit(context.Background()); err != nil {
+// 		r.logger.Error("failed to commit transaction", "error", err)
+// 		return fmt.Errorf("failed to commit transaction: %w", err)
+// 	}
+//
+// 	return nil
+// }
 
 // AddSubscription adds a new subscription for a user.
 //
@@ -217,75 +329,29 @@ func (r *SQLRepository) DeleteUser(userID int64) error {
 //		}
 //		return nil
 //	}
-func (r *SQLRepository) AddSubscription(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences) error {
+//
+//nolint:dupl //SQL and ORM repository has the same logic, but in specification we must create the same modules
+func (r *SQLRepository) AddSubscription(userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error {
 	tx, err := r.db.Begin(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(context.Background())
+
+	defer func() {
+		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
+			r.logger.Error("failed to rollback", "error", rollbackErr)
+		}
+	}()
 
 	// Step 1: Check if a subscription with the same URL exists
-	var subID int64
-
-	query := `
-        SELECT subID FROM subscriptions WHERE url = $1
-    `
-	err = tx.QueryRow(context.Background(), query, sub.URL).Scan(&subID)
-
-	if err == pgx.ErrNoRows {
-		// Step 2: If no subscription exists, create a new one
-		subID = time.Now().Unix() // Use the provided sub.ID as the new subscription ID
-
-		// Marshal LastActivity to JSON
-		lastActivityJSON, err := json.Marshal(sub.LastActivity)
-		if err != nil {
-			r.logger.Error("failed to serialize lastActivity", "error", err)
-			return fmt.Errorf("failed to serialize lastActivity: %w", err)
-		}
-
-		// Insert the new subscription with the serialized lastActivity
-		insertQuery := `
-            INSERT INTO subscriptions (subID, url, tgChatIDs, lastActivity)
-            VALUES ($1, $2, $3, $4::JSONB)
-        `
-
-		_, err = tx.Exec(context.Background(), insertQuery, subID, sub.URL, []int64{userID}, lastActivityJSON)
-		if err != nil {
-			r.logger.Error("failed to insert new subscription", "error", err)
-			return fmt.Errorf("failed to insert new subscription: %w", err)
-		}
-	} else if err != nil {
-		r.logger.Error("failed to find subscription", "error", err)
-		return fmt.Errorf("failed to find subscription: %w", err)
-	} else {
-		// Step 3: If a subscription exists, add userID to tgChatIDs
-		updateQuery := `
-            UPDATE subscriptions
-            SET tgChatIDs = array_append(tgChatIDs, $1)
-            WHERE subID = $2 AND NOT ($1 = ANY(tgChatIDs))
-        `
-
-		_, err = tx.Exec(context.Background(), updateQuery, userID, subID)
-		if err != nil {
-			r.logger.Error("failed to update subscription tgChatIDs", "error", err)
-			return fmt.Errorf("failed to update subscription tgChatIDs: %w", err)
-		}
+	subID, err := r.findOrCreateSubscription(tx, sub, userID)
+	if err != nil {
+		return err
 	}
 
-	// Step 4: Insert or update user preferences
-	prefQuery := `
-        INSERT INTO users_preferences (userID, subID, filters, tags, url)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (userID, subID) DO UPDATE SET
-            filters = EXCLUDED.filters,
-            tags = EXCLUDED.tags,
-            url = EXCLUDED.url
-    `
-
-	_, err = tx.Exec(context.Background(), prefQuery, userID, subID, pkg.ConvertToArray(subPreferences.Filters), subPreferences.Tags, subPreferences.URL)
-	if err != nil {
-		r.logger.Error("failed to add user preferences", "error", err)
-		return fmt.Errorf("failed to add user preferences: %w", err)
+	// Step 2: Insert or update user preferences
+	if err := r.upsertUserPreferences(tx, userID, subID, subPreferences); err != nil {
+		return err
 	}
 
 	// Commit the transaction
@@ -297,13 +363,92 @@ func (r *SQLRepository) AddSubscription(userID int64, sub domain.Subscription, s
 	return nil
 }
 
+// Helper function to find or create a subscription.
+func (r *SQLRepository) findOrCreateSubscription(tx pgx.Tx, sub *domain.Subscription, userID int64) (int64, error) {
+	query := `
+        SELECT subID FROM subscriptions WHERE url = $1
+    `
+
+	var subID int64
+	err := tx.QueryRow(context.Background(), query, sub.URL).Scan(&subID)
+
+	switch {
+	case err == pgx.ErrNoRows:
+		// Create a new subscription
+		subID = time.Now().Unix()
+
+		lastActivityJSON, err := json.Marshal(sub.LastActivity)
+		if err != nil {
+			r.logger.Error("failed to serialize lastActivity", "error", err)
+			return 0, fmt.Errorf("failed to serialize lastActivity: %w", err)
+		}
+
+		insertQuery := `
+            INSERT INTO subscriptions (subID, url, tgChatIDs, lastActivity)
+            VALUES ($1, $2, $3, $4::JSONB)
+        `
+
+		_, err = tx.Exec(context.Background(), insertQuery, subID, sub.URL, []int64{userID}, lastActivityJSON)
+		if err != nil {
+			r.logger.Error("failed to insert new subscription", "error", err)
+			return 0, fmt.Errorf("failed to insert new subscription: %w", err)
+		}
+
+	case err != nil:
+		r.logger.Error("failed to find subscription", "error", err)
+		return 0, fmt.Errorf("failed to find subscription: %w", err)
+
+	default:
+		// Add userID to tgChatIDs if not already present
+		updateQuery := `
+            UPDATE subscriptions
+            SET tgChatIDs = array_append(tgChatIDs, $1)
+            WHERE subID = $2 AND NOT ($1 = ANY(tgChatIDs))
+        `
+
+		_, err = tx.Exec(context.Background(), updateQuery, userID, subID)
+		if err != nil {
+			r.logger.Error("failed to update subscription tgChatIDs", "error", err)
+			return 0, fmt.Errorf("failed to update subscription tgChatIDs: %w", err)
+		}
+	}
+
+	return subID, nil
+}
+
+// Helper function to insert or update user preferences.
+func (r *SQLRepository) upsertUserPreferences(tx pgx.Tx, userID, subID int64, subPreferences domain.UserPreferences) error {
+	prefQuery := `
+        INSERT INTO users_preferences (userID, subID, filters, tags, url)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (userID, subID) DO UPDATE SET
+            filters = EXCLUDED.filters,
+            tags = EXCLUDED.tags,
+            url = EXCLUDED.url
+    `
+
+	_, err := tx.Exec(context.Background(), prefQuery, userID, subID,
+		pkg.ConvertToArray(subPreferences.Filters), subPreferences.Tags, subPreferences.URL)
+	if err != nil {
+		r.logger.Error("failed to add user preferences", "error", err)
+		return fmt.Errorf("failed to add user preferences: %w", err)
+	}
+
+	return nil
+}
+
 // RemoveSubscription removes a subscription for a user.
 func (r *SQLRepository) RemoveSubscription(userID int64, link string) error {
 	tx, err := r.db.Begin(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(context.Background())
+
+	defer func() {
+		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
+			r.logger.Error("failed to rollback", "error", rollbackErr)
+		}
+	}()
 
 	// Find subscription ID by URL
 	var subID int64

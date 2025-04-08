@@ -9,11 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client"
-	mockScrapperClient "github.com/central-university-dev/go-z0tedd/pkg/mocks/scrapper/client"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client"
+	mockScrapperClient "github.com/central-university-dev/go-z0tedd/pkg/mocks/scrapper/client"
 )
 
 func ptrString(s string) *string {

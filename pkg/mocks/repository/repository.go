@@ -369,7 +369,7 @@ func (_c *Repository_RemoveSubscription_Call) RunAndReturn(run func(int64, strin
 }
 
 // UpdateSubscription provides a mock function with given fields: subID, newSub
-func (_m *Repository) UpdateSubscription(subID int64, newSub domain.Subscription) error {
+func (_m *Repository) UpdateSubscription(subID int64, newSub *domain.Subscription) error {
 	ret := _m.Called(subID, newSub)
 
 	if len(ret) == 0 {
@@ -377,7 +377,7 @@ func (_m *Repository) UpdateSubscription(subID int64, newSub domain.Subscription
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, domain.Subscription) error); ok {
+	if rf, ok := ret.Get(0).(func(int64, *domain.Subscription) error); ok {
 		r0 = rf(subID, newSub)
 	} else {
 		r0 = ret.Error(0)
@@ -393,14 +393,14 @@ type Repository_UpdateSubscription_Call struct {
 
 // UpdateSubscription is a helper method to define mock.On call
 //   - subID int64
-//   - newSub domain.Subscription
+//   - newSub *domain.Subscription
 func (_e *Repository_Expecter) UpdateSubscription(subID interface{}, newSub interface{}) *Repository_UpdateSubscription_Call {
 	return &Repository_UpdateSubscription_Call{Call: _e.mock.On("UpdateSubscription", subID, newSub)}
 }
 
-func (_c *Repository_UpdateSubscription_Call) Run(run func(subID int64, newSub domain.Subscription)) *Repository_UpdateSubscription_Call {
+func (_c *Repository_UpdateSubscription_Call) Run(run func(subID int64, newSub *domain.Subscription)) *Repository_UpdateSubscription_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64), args[1].(domain.Subscription))
+		run(args[0].(int64), args[1].(*domain.Subscription))
 	})
 	return _c
 }
@@ -410,7 +410,7 @@ func (_c *Repository_UpdateSubscription_Call) Return(_a0 error) *Repository_Upda
 	return _c
 }
 
-func (_c *Repository_UpdateSubscription_Call) RunAndReturn(run func(int64, domain.Subscription) error) *Repository_UpdateSubscription_Call {
+func (_c *Repository_UpdateSubscription_Call) RunAndReturn(run func(int64, *domain.Subscription) error) *Repository_UpdateSubscription_Call {
 	_c.Call.Return(run)
 	return _c
 }

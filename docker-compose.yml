@@ -12,7 +12,7 @@ services:
     ports:
       - "5430:5432"
     volumes:
-      - ./pgdata:/var/lib/postgresql/data/pgdata
+      - ./.pgdata:/var/lib/postgresql/data/pgdata
     deploy:
       resources:
         limits:
@@ -83,7 +83,7 @@ services:
   #     - postgres-network
 
 volumes:
-  pgdata:
+  .pgdata:
     driver: local
   pgadmin-data:
     driver: local

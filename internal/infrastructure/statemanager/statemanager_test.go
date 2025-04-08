@@ -5,8 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/statemanager"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/statemanager"
 )
 
 const (

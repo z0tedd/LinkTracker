@@ -6,16 +6,14 @@ import (
 	"os"
 
 	"github.com/caarlos0/env/v11"
-	botAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/client"
-	githubAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/github"
+	"github.com/go-co-op/gocron/v2"
+	"github.com/labstack/echo/v4"
+
 	unimplemented_server "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/server"
-	stackOverflowAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/stackoverflow"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/checker"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/server"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
-	"github.com/go-co-op/gocron/v2"
-	"github.com/labstack/echo/v4"
 )
 
 // Helper functions to create pointers for primitive types.
@@ -40,23 +38,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	botClient, err := botAPI.NewClientWithResponses("http://localhost:8081")
+	checker, err := checker.NewChecker(logger, repo)
 	if err != nil {
-		logger.Error("bot-client startup", slog.Any("error", err.Error()))
+		logger.Error("checker startup", slog.Any("error", err.Error()))
 		return
 	}
-
-	githubClient, err := githubAPI.NewClientWithResponses("https://api.github.com")
-	if err != nil {
-		logger.Error("bot-client startup", slog.Any("error", err.Error()))
-	}
-
-	stackOverflowClient, err := stackOverflowAPI.NewClientWithResponses("https://api.stackexchange.com/2.3")
-	if err != nil {
-		logger.Error("bot-client startup", slog.Any("error", err.Error()))
-	}
-
-	checker := checker.NewChecker(githubClient, stackOverflowClient, botClient, logger, repo)
 
 	scheduler, err := gocron.NewScheduler()
 	if err != nil {
@@ -75,7 +61,7 @@ func main() {
 
 	_, err = scheduler.NewJob(
 		gocron.CronJob("0/10 * * * *", false),
-		gocron.NewTask(checker.CheckSubscriptions, ctx))
+		gocron.NewTask(checker.CheckAllSubscriptions, ctx))
 	// checker.CheckLinks, repo),
 	if err != nil {
 		logger.Error("screduler newjob", slog.Any("error:", err))

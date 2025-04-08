@@ -8,14 +8,16 @@ type Subscription struct {
 	LastActivity      Activity
 }
 type Activity struct {
-	DateUnix int64
+	Title         string // текст темы вопроса | превью ответа или комментария (первые 200 символов)
+	Username      string //  имя пользователя
+	DateUnix      int64  // время создания
+	AnswerPreview string // превью ответа/комментария/описания
 }
 
 // users-preferences
 // userID SubID Filters Tags URL
 
-// subs
-// SubID URL TgChatIDs LastActivity
+// SubID URL TgChatIDs LastActivity.
 type UserPreferences struct {
 	SubID   int
 	Filters map[string]string
