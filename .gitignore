@@ -11,6 +11,8 @@ bin
 .pgdata
 pgadmin-data
 migrations
+kafka
+redis
 
 
 # Test binary, built with `go test -c`

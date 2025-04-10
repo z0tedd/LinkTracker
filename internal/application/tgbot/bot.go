@@ -26,6 +26,7 @@ func (b *TrackingBot) Run() {
 		{Command: "track", Description: "Track source"},
 		{Command: "untrack", Description: "Untrack source"},
 		{Command: "list", Description: "List sources"},
+		{Command: "list_with_tags", Description: "List sources grouped by tags"},
 	}
 
 	// Set the commands using SetMyCommands
