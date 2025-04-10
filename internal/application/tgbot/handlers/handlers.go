@@ -208,7 +208,7 @@ func handleListGroupedByTagsCommand(bot *tgbotapi.BotAPI, userID int64, apiClien
 			result.WriteString(fmt.Sprintf("\nТег: %s\n", tag))
 
 			for i, sub := range subs {
-				result.WriteString(fmt.Sprintf("  %d. Ссылка: %s\n", i+1, *sub.Url))
+				result.WriteString(fmt.Sprintf("  %d. Ссылка: %s\n", i+1, *sub.Url)) // ПРОД УПАЛ НА ЭТОМ МОМЕНТЕ
 
 				if sub.Filters != nil && len(*sub.Filters) > 0 {
 					result.WriteString(fmt.Sprintf("     Фильтры: %s\n", strings.Join(*sub.Filters, ", ")))
