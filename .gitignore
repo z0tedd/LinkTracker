@@ -10,7 +10,6 @@
 bin
 .pgdata
 pgadmin-data
-migrations
 kafka
 redis
 
