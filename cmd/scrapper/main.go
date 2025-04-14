@@ -12,7 +12,7 @@ import (
 	unimplemented_server "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/server"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/checker"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/server"
-	"github.com/central-university-dev/go-z0tedd/internal/domain"
+	"github.com/central-university-dev/go-z0tedd/internal/config"
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
 )
 
@@ -21,7 +21,7 @@ import (
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	cfg := &domain.Config{}
+	cfg := &config.Config{}
 
 	// typesafe config
 	err := env.Parse(cfg)

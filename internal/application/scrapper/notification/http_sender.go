@@ -7,6 +7,7 @@ import (
 	"time"
 
 	botAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/client"
+	"github.com/central-university-dev/go-z0tedd/internal/config"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
 	"github.com/central-university-dev/go-z0tedd/pkg"
 )
@@ -17,7 +18,7 @@ type Sender interface {
 
 type HTTPNotificationSender struct {
 	botClient botAPI.ClientWithResponsesInterface
-	config    *domain.Config //nolint:unused // for future
+	config    *config.Config //nolint:unused // for future
 	logger    *slog.Logger
 }
 

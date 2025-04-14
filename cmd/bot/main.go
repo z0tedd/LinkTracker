@@ -11,12 +11,12 @@ import (
 	unimplemented_server "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/server"
 	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot"
 	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/server"
-	"github.com/central-university-dev/go-z0tedd/internal/domain"
+	"github.com/central-university-dev/go-z0tedd/internal/config"
 )
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	cfg := domain.Config{}
+	cfg := config.Config{}
 
 	// typesafe config
 	err := env.Parse(&cfg)

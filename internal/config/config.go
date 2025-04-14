@@ -1,4 +1,4 @@
-package domain
+package config
 
 type Config struct {
 	BotToken   string `env:"TELEGRAM_BOT_TOKEN"`

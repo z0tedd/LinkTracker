@@ -11,16 +11,17 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/central-university-dev/go-z0tedd/internal/config"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
 	"github.com/central-university-dev/go-z0tedd/pkg"
 )
 
 type Creator struct {
-	config *domain.Config
+	config *config.Config
 	logger *slog.Logger
 }
 
-func NewCreator(logger *slog.Logger, config *domain.Config) Creator {
+func NewCreator(logger *slog.Logger, config *config.Config) Creator {
 	return Creator{config: config, logger: logger}
 }
 
