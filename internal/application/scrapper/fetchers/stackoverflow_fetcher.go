@@ -46,7 +46,7 @@ func (f *StackOverflowFetcher) GetQuestionComments(ctx context.Context) (domain.
 	}
 
 	// Check if the comment is newer than the last recorded activity
-	if *lastComment.CreationDate >= int(f.sub.LastActivity.DateUnix) {
+	if *(lastComment.CreationDate) >= int(f.sub.LastActivity.DateUnix) {
 		newActivity := domain.Activity{
 			Title:         "Update",
 			Username:      *lastComment.Owner.DisplayName,

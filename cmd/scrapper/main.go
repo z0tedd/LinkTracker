@@ -27,7 +27,7 @@ func main() {
 	err := env.Parse(cfg)
 	if err != nil {
 		logger.Error("parsing env", "error", err)
-		os.Exit(1)
+		return
 	}
 
 	repoFactory := repository.NewCreator(logger, cfg)
@@ -35,10 +35,10 @@ func main() {
 	repo, err := repoFactory.Create()
 	if err != nil {
 		logger.Error("creating repository", "error", err)
-		os.Exit(1)
+		return
 	}
 
-	checker, err := checker.NewChecker(logger, repo)
+	checker, err := checker.NewChecker(cfg, logger, repo)
 	if err != nil {
 		logger.Error("checker startup", slog.Any("error", err.Error()))
 		return
@@ -60,7 +60,7 @@ func main() {
 	}()
 
 	_, err = scheduler.NewJob(
-		gocron.CronJob("0/10 * * * *", false),
+		gocron.CronJob(cfg.Crontab, false),
 		gocron.NewTask(checker.CheckAllSubscriptions, ctx))
 	// checker.CheckLinks, repo),
 	if err != nil {
@@ -69,15 +69,20 @@ func main() {
 	}
 
 	scheduler.Start()
+	// Может быть нужно создать еще одну абстракцию над http сервером?
+	switch cfg.MessageTransportType {
+	case "http":
+		e := echo.New()
 
-	e := echo.New()
+		// Create an instance of your server implementation
+		myServer := server.NewScrapperServer(repo, logger)
 
-	// Create an instance of your server implementation
-	myServer := server.NewScrapperServer(repo, logger)
+		// Register the handlers with the Echo router
+		unimplemented_server.RegisterHandlers(e, myServer)
 
-	// Register the handlers with the Echo router
-	unimplemented_server.RegisterHandlers(e, myServer)
-
-	// Start the server
-	e.Logger.Fatal(e.Start(":8080"))
+		// Start the server
+		e.Logger.Fatal(e.Start(":8080"))
+	case "kafka":
+		// TODO: DO
+	}
 }

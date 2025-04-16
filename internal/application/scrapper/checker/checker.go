@@ -2,10 +2,12 @@ package checker
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/fetchers"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/notification"
+	"github.com/central-university-dev/go-z0tedd/internal/config"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
 )
 
@@ -20,13 +22,14 @@ type Checker struct {
 	logger             *slog.Logger
 	notificationSender notification.Sender
 	activityFetcher    fetchers.ActivityFetcher
+	cfg                *config.Config
 }
 
-func NewChecker(logger *slog.Logger, repo SubscriptionRepository) (*Checker, error) {
-	notificationSender, err := notification.NewHTTPNotificationSender(logger)
+// TODO: Rewrite with the DI(no constructors for interfaces)
+func NewChecker(config *config.Config, logger *slog.Logger, repo SubscriptionRepository) (*Checker, error) {
+	notificationSender, err := notification.NewHTTPNotificationSender(config.BotBaseURL, logger) // TODO: replace to fabric
 	if err != nil {
-		logger.Error("notification sender create", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("notification sender creating: %w", err)
 	}
 
 	fetcher, err := fetchers.NewActivityFetcher(logger)
@@ -35,7 +38,7 @@ func NewChecker(logger *slog.Logger, repo SubscriptionRepository) (*Checker, err
 		return nil, err
 	}
 
-	return &Checker{repo, logger, notificationSender, fetcher}, nil
+	return &Checker{repo: repo, logger: logger, notificationSender: notificationSender, activityFetcher: fetcher}, nil
 }
 
 func (c Checker) CheckSubscription(ctx context.Context, subID int64) {

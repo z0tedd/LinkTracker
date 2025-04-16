@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
+	"github.com/central-university-dev/go-z0tedd/pkg"
 )
 
 type Fetcher interface {
@@ -45,10 +46,10 @@ func (f *ActivityFetcher) SetFetcherBySub(sub *domain.Subscription) error {
 
 	hostname := parsedURL.Hostname()
 	switch hostname {
-	case "stackoverflow.com":
+	case pkg.Stackoverflow:
 		f.activityFetcher, err = NewStackOverflowFetcher(sub, f.logger)
 
-	case "github.com":
+	case pkg.Github:
 		f.activityFetcher, err = NewGithubFetcher(sub, f.logger)
 
 	default:

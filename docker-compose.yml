@@ -5,9 +5,9 @@ services:
     container_name: postgres_container
 
     environment:
-      POSTGRES_USER: postgres_user
-      POSTGRES_PASSWORD: postgres_password
-      POSTGRES_DB: postgres_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5430:5432"
@@ -30,7 +30,7 @@ services:
                -c wal_buffers=16MB
                -c default_statistics_target=100
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres_user -d postgres_db"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -51,9 +51,9 @@ services:
       - --searchPath=/changesets
       - --changelog-file=master.xml
       - --driver=org.postgresql.Driver
-      - --url=jdbc:postgresql://postgres_container:5432/postgres_db
-      - --username=postgres_user
-      - --password=postgres_password
+      - --url=jdbc:postgresql://postgres_container:5432/${POSTGRES_DB}
+      - --username=${POSTGRES_USER} #postgres_user
+      - --password=${POSTGRES_PASSWORD} #postgres_password
       # - clear-checksums
       - update
     volumes:
@@ -102,27 +102,6 @@ services:
       - ./kafka/data:/var/lib/kafka/data
     networks:
       - kafka-network
-  # kafka:
-  # pgadmin:
-  #   container_name: pgadmin_container
-  #   image: dpage/pgadmin4:latest
-  #   profiles: ["migrations"]
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: "habrpguser@habr.com"
-  #     PGADMIN_DEFAULT_PASSWORD: "pgadminpwd4habr"
-  #     PGADMIN_CONFIG_SERVER_MODE: "False"
-  #   volumes:
-  #     - ./pgadmin-data:/var/lib/pgadmin
-  #   ports:
-  #     - "5051:80"
-  #   restart: unless-stopped
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: "0.5"
-  #         memory: 1G
-  #   networks:
-  #     - postgres-network
 
 volumes:
   .pgdata:

@@ -12,17 +12,17 @@ import (
 	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/helpers"
 )
 
-type BotServer struct {
+type HTTPBotServer struct {
 	tgAPI  *tgbotapi.BotAPI
 	logger *slog.Logger
 }
 
 // NewScrapperServer creates a new instance of ScrapperServer with the given repository.
-func NewBotServer(tgAPI *tgbotapi.BotAPI, logger *slog.Logger) *BotServer {
-	return &BotServer{tgAPI: tgAPI, logger: logger}
+func NewHTTPBotServer(tgAPI *tgbotapi.BotAPI, logger *slog.Logger) *HTTPBotServer {
+	return &HTTPBotServer{tgAPI: tgAPI, logger: logger}
 }
 func stringPtr(s string) *string { return &s }
-func (b BotServer) PostUpdates(ctx echo.Context) error {
+func (b HTTPBotServer) PostUpdates(ctx echo.Context) error {
 	var requestBody server.PostUpdatesJSONRequestBody
 	if err := ctx.Bind(&requestBody); err != nil {
 		return ctx.JSON(http.StatusBadRequest, server.ApiErrorResponse{

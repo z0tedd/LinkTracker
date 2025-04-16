@@ -22,27 +22,32 @@ func main() {
 	err := env.Parse(&cfg)
 	if err != nil {
 		logger.Error(("TELEGRAM_BOT_TOKEN is not set"))
-		os.Exit(1)
+		return
 	}
 
 	botAPI, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		logger.Error("exiting app, critical error", slog.Any("botAPI", err))
-		os.Exit(1)
+		return
 	}
 
 	bot, err := tgbot.NewTrackingBot(botAPI, logger)
 	if err != nil {
 		logger.Error("exiting app, critical error", slog.Any("tracking bot", err))
-		os.Exit(1)
+		return
 	}
 
 	go bot.Run()
 
-	e := echo.New()
+	switch cfg.MessageTransportType {
+	case "http":
+		e := echo.New()
 
-	botServer := server.NewBotServer(botAPI, logger)
+		botServer := server.NewHTTPBotServer(botAPI, logger)
 
-	unimplemented_server.RegisterHandlers(e, botServer)
-	e.Logger.Fatal(e.Start(":8081"))
+		unimplemented_server.RegisterHandlers(e, botServer)
+		e.Logger.Fatal(e.Start(":8081"))
+	case "kafka":
+		// TODO: DO
+	}
 }
