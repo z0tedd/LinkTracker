@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"strings"
 
+	"github.com/IBM/sarama"
 	"github.com/caarlos0/env/v11"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/labstack/echo/v4"
@@ -18,12 +21,14 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	cfg := config.Config{}
 
+	ctx := context.Background()
 	// typesafe config
 	err := env.Parse(&cfg)
 	if err != nil {
 		logger.Error(("TELEGRAM_BOT_TOKEN is not set"))
 		return
 	}
+
 	botAPI, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		logger.Error("exiting app, critical error", slog.Any("bot_api", err), slog.Any("token", cfg.BotToken))
@@ -47,6 +52,20 @@ func main() {
 		unimplemented_server.RegisterHandlers(e, botServer)
 		e.Logger.Fatal(e.Start(":8081"))
 	case "kafka":
-		// TODO: DO
+		kafkaConfig := sarama.NewConfig()
+
+		consumer, err := sarama.NewConsumerGroup(strings.Split(cfg.KafkaAddresses, ","), cfg.ScrapperGroupID, kafkaConfig)
+		if err != nil {
+			logger.Error("exiting app, critical error", slog.Any("tracking bot", err))
+			return
+		}
+
+		botServer, err := server.NewKafkaBotServer(&cfg, consumer, logger, botAPI)
+		if err != nil {
+			logger.Error("exiting app, critical error", slog.Any("tracking bot", err))
+			return
+		}
+
+		logger.Error("exiting app", slog.Any("error", botServer.Start(ctx)))
 	}
 }

@@ -25,11 +25,24 @@ type Checker struct {
 	cfg                *config.Config
 }
 
-// TODO: Rewrite with the DI(no constructors for interfaces)
-func NewChecker(config *config.Config, logger *slog.Logger, repo SubscriptionRepository) (*Checker, error) {
-	notificationSender, err := notification.NewHTTPNotificationSender(config.BotBaseURL, logger) // TODO: replace to fabric
-	if err != nil {
-		return nil, fmt.Errorf("notification sender creating: %w", err)
+// TODO: Rewrite with the DI(no constructors for interfaces).
+func NewChecker(config *config.Config, logger *slog.Logger, repo SubscriptionRepository, cfg *config.Config) (*Checker, error) {
+	var (
+		notificationSender notification.Sender
+		err                error
+	)
+	switch cfg.MessageTransportType {
+	case "http":
+
+		notificationSender, err = notification.NewHTTPNotificationSender(config.BotBaseURL, logger) // TODO: replace to fabric
+		if err != nil {
+			return nil, fmt.Errorf("notification sender creating: %w", err)
+		}
+	case "kafka":
+		notificationSender, err = notification.NewKafkaNotificationSender(cfg, logger)
+		if err != nil {
+			return nil, fmt.Errorf("notification sender creating: %w", err)
+		}
 	}
 
 	fetcher, err := fetchers.NewActivityFetcher(logger)
@@ -72,10 +85,25 @@ func (c Checker) CheckSubscription(ctx context.Context, subID int64) {
 	}
 }
 
+func (c Checker) CheckSubscriptionFixture(ctx context.Context, subID int64) {
+	sub, err := c.repo.GetSubscription(subID)
+	if err != nil {
+		c.logger.Error("Failed to send updated subscription", "error", err)
+		return
+	}
+
+	err = c.notificationSender.Send(ctx, &sub)
+	if err != nil {
+		c.logger.Error("Failed to send updated subscription", "error", err)
+		return
+	}
+}
+
 func (c Checker) CheckAllSubscriptions(ctx context.Context) {
 	c.logger.Info("Starting subscription checks")
 
 	for subID := range c.repo.GetSubsID() {
-		c.CheckSubscription(ctx, subID)
+		// c.CheckSubscription(ctx, subID)
+		c.CheckSubscriptionFixture(ctx, subID)
 	}
 }

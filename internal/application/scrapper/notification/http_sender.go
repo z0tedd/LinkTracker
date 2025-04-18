@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/IBM/sarama"
+
 	botAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/client"
 	"github.com/central-university-dev/go-z0tedd/internal/application/dtos"
 	"github.com/central-university-dev/go-z0tedd/internal/config"

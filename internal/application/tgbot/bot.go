@@ -48,12 +48,11 @@ func (b *TrackingBot) Run() {
 		b.logger.Warn("Scrapper client", slog.Any("error", err.Error()))
 	}
 
-	handler := http_handler.NewHttpHandler(b.botAPI, clientScrapper, states, b.logger)
+	handler := http_handler.NewHTTPHandler(b.botAPI, clientScrapper, states, b.logger)
 
 	updates := b.botAPI.GetUpdatesChan(updateConfig)
 	for update := range updates {
 		handler.HandleUpdate(&update)
-
 		// handlers.HandleUpdate(b.botAPI, &update, clientScrapper, states, b.logger)
 	}
 }

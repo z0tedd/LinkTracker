@@ -1,4 +1,4 @@
-package http_handler
+package httphandler
 
 import (
 	"context"
@@ -8,13 +8,14 @@ import (
 	"net/http"
 	"strings"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 	client "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client"
 	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/helpers"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-// TODO: Rewrite test for this
+// TODO: Rewrite test for this.
 type StateManager interface {
 	SetState(chatID int64, state string)
 	GetState(chatID int64) string
@@ -22,17 +23,17 @@ type StateManager interface {
 	GetData(chatID int64, key string) any
 }
 
-// HttpHandler represents the handler for Telegram bot updates.
-type HttpHandler struct {
+// HTTPHandler represents the handler for Telegram bot updates.
+type HTTPHandler struct {
 	bot       *tgbotapi.BotAPI
 	apiClient *client.Client
 	states    StateManager
 	logger    *slog.Logger
 }
 
-// NewHttpHandler creates a new instance of HttpHandler.
-func NewHttpHandler(bot *tgbotapi.BotAPI, apiClient *client.Client, states StateManager, logger *slog.Logger) *HttpHandler {
-	return &HttpHandler{
+// NewHttpHandler creates a new instance of HTTPHandler.
+func NewHTTPHandler(bot *tgbotapi.BotAPI, apiClient *client.Client, states StateManager, logger *slog.Logger) *HTTPHandler {
+	return &HTTPHandler{
 		bot:       bot,
 		apiClient: apiClient,
 		states:    states,
@@ -41,12 +42,14 @@ func NewHttpHandler(bot *tgbotapi.BotAPI, apiClient *client.Client, states State
 }
 
 // HandleUpdate processes incoming Telegram updates.
-func (h *HttpHandler) HandleUpdate(update *tgbotapi.Update) {
+func (h *HTTPHandler) HandleUpdate(update *tgbotapi.Update) {
 	if update.Message == nil {
 		return
 	}
+
 	msg := update.Message
 	userID := msg.From.ID
+
 	switch msg.Text {
 	case "/start":
 		h.handleStartCommand(userID)
@@ -64,15 +67,19 @@ func (h *HttpHandler) HandleUpdate(update *tgbotapi.Update) {
 }
 
 // handleStartCommand handles the /start command.
-func (h *HttpHandler) handleStartCommand(userID int64) {
+func (h *HTTPHandler) handleStartCommand(userID int64) {
 	ctx := context.Background()
+
 	resp, err := h.apiClient.PostTgChatId(ctx, userID)
 	if err != nil {
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при регистрации пользователя: %s", err.Error()))
 		h.logger.Warn("Failed to register user", slog.Any("error", err))
+
 		return
 	}
+
 	defer resp.Body.Close()
+
 	if resp.StatusCode == http.StatusCreated {
 		h.logAndSendMessage(userID, "Вы успешно зарегистрированы!")
 		h.logger.Debug("User registered", slog.Any("userID", userID))
@@ -83,54 +90,61 @@ func (h *HttpHandler) handleStartCommand(userID int64) {
 }
 
 // handleHelpCommand handles the /help command.
-func (h *HttpHandler) handleHelpCommand(userID int64) {
+func (h *HTTPHandler) handleHelpCommand(userID int64) {
 	h.logAndSendMessage(userID, helpMessage())
 }
 
 // handleTrackCommand handles the /track command.
-func (h *HttpHandler) handleTrackCommand(userID int64) {
+func (h *HTTPHandler) handleTrackCommand(userID int64) {
 	h.states.SetState(userID, "waiting_for_link")
 	h.logger.Debug("State of user", slog.Any("state", h.states.GetState(userID)), slog.Any("userID", userID))
 	h.logAndSendMessage(userID, "Введите ссылку для отслеживания:")
 }
 
 // handleUntrackCommand handles the /untrack command.
-func (h *HttpHandler) handleUntrackCommand(userID int64) {
+func (h *HTTPHandler) handleUntrackCommand(userID int64) {
 	h.states.SetState(userID, "waiting_for_untrack_link")
 	h.logger.Debug("State of user", slog.Any("state", h.states.GetState(userID)), slog.Any("userID", userID))
 	h.logAndSendMessage(userID, "Введите ссылку для удаления из отслеживания:")
 }
 
 // handleListCommand handles the /list command.
-func (h *HttpHandler) handleListCommand(userID int64) {
+func (h *HTTPHandler) handleListCommand(userID int64) {
 	ctx := context.Background()
 	params := client.GetLinksParams{TgChatId: userID}
+
 	resp, err := h.apiClient.GetLinks(ctx, &params)
 	if err != nil {
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при получении списка подписок: %s", err.Error()))
 		return
 	}
+
 	if resp.StatusCode == 404 {
 		h.logAndSendMessage(userID, "Нет активных подписок!")
 		return
 	}
+
 	if resp.StatusCode != 200 {
 		err = domain.StatusCodeNon200Error{Msg: "status code:", Code: resp.StatusCode}
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при получении списка подписок: %s", err.Error()))
+
 		return
 	}
+
 	defer resp.Body.Close()
+
 	var listResponse client.ListLinksResponse
 	if err = json.NewDecoder(resp.Body).Decode(&listResponse); err != nil {
 		h.logAndSendMessage(userID, "Ошибка при обработке данных.")
 		return
 	}
+
 	subscriptions := formatSubscriptionsFromResponse(listResponse, h.logger)
 	h.logAndSendMessage(userID, subscriptions)
 }
 
 // handleStateMachine processes state-based interactions.
-func (h *HttpHandler) handleStateMachine(userID int64, text string) {
+func (h *HTTPHandler) handleStateMachine(userID int64, text string) {
 	state := h.states.GetState(userID)
 	switch state {
 	case "waiting_for_link":
@@ -147,22 +161,25 @@ func (h *HttpHandler) handleStateMachine(userID int64, text string) {
 }
 
 // handleWaitingForLink handles the "waiting_for_link" state.
-func (h *HttpHandler) handleWaitingForLink(userID int64, link string) {
+func (h *HTTPHandler) handleWaitingForLink(userID int64, link string) {
 	h.states.SetData(userID, "subscription_link", link)
+
 	if !helpers.IsValidURL(link) {
 		h.logAndSendMessage(userID, "Неверный формат ссылки. Попробуйте снова.")
 		return
 	}
+
 	if !helpers.IsSupported(link) {
 		h.logAndSendMessage(userID, "На данный момент поддерживаются репозитории Github и вопросы с StackOverflow.")
 		return
 	}
+
 	h.states.SetState(userID, "waiting_for_tags")
 	h.logAndSendMessage(userID, "Введите теги (через пробел, опционально):")
 }
 
 // handleWaitingForTags handles the "waiting_for_tags" state.
-func (h *HttpHandler) handleWaitingForTags(userID int64, text string) {
+func (h *HTTPHandler) handleWaitingForTags(userID int64, text string) {
 	tags := strings.Fields(text)
 	h.states.SetData(userID, "subscription_tags", tags)
 	h.states.SetState(userID, "waiting_for_filters")
@@ -170,7 +187,7 @@ func (h *HttpHandler) handleWaitingForTags(userID int64, text string) {
 }
 
 // handleWaitingForFilters handles the "waiting_for_filters" state.
-func (h *HttpHandler) handleWaitingForFilters(userID int64, text string) {
+func (h *HTTPHandler) handleWaitingForFilters(userID int64, text string) {
 	filters := parseFilters(text)
 	ctx := context.Background()
 	params := client.PostLinksParams{TgChatId: userID}
@@ -181,13 +198,17 @@ func (h *HttpHandler) handleWaitingForFilters(userID int64, text string) {
 		Link:    &link,
 		Tags:    &tags,
 	}
+
 	resp, err := h.apiClient.PostLinks(ctx, &params, body)
 	if err != nil {
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при создании подписки: %s", err.Error()))
 		h.logger.Warn("Failed to create subscription", slog.Any("error", err))
+
 		return
 	}
+
 	defer resp.Body.Close()
+
 	if resp.StatusCode == http.StatusCreated {
 		h.states.SetState(userID, "")
 		h.logAndSendMessage(userID, "Подписка успешно создана!")
@@ -196,6 +217,7 @@ func (h *HttpHandler) handleWaitingForFilters(userID int64, text string) {
 		if err := json.NewDecoder(resp.Body).Decode(&apiError); err != nil {
 			h.logger.Warn("decoding", slog.Any("error", err.Error()))
 		}
+
 		h.logger.Warn("Unexpected status code while creating subscription", slog.Int("status_code", resp.StatusCode))
 		h.logger.Warn("Answer from server", slog.Any("code", *apiError.Code), slog.Any("Description", *apiError.Description))
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при создании подписки: %s", resp.Status))
@@ -203,26 +225,31 @@ func (h *HttpHandler) handleWaitingForFilters(userID int64, text string) {
 }
 
 // handleWaitingForUntrackLink handles the "waiting_for_untrack_link" state.
-func (h *HttpHandler) handleWaitingForUntrackLink(userID int64, link string) {
+func (h *HTTPHandler) handleWaitingForUntrackLink(userID int64, link string) {
 	ctx := context.Background()
 	params := client.DeleteLinksParams{TgChatId: userID, Link: link}
+
 	resp, err := h.apiClient.DeleteLinks(ctx, &params)
 	if err != nil {
 		h.logger.Warn("Failed to delete subscription", slog.Any("error", err))
 		h.logAndSendMessage(userID, fmt.Sprintf("Error deleting subscription: %s, try again", err.Error()))
+
 		return
 	}
+
 	defer resp.Body.Close()
+
 	if resp.StatusCode == 200 {
 		h.logAndSendMessage(userID, "Подписка успешно удалена.")
 	} else {
 		h.logAndSendMessage(userID, "Ссылка не найдена в списке подписок.")
 	}
+
 	h.states.SetState(userID, "")
 }
 
 // logAndSendMessage logs an error and sends a message to the user.
-func (h *HttpHandler) logAndSendMessage(userID int64, message string) {
+func (h *HTTPHandler) logAndSendMessage(userID int64, message string) {
 	err := helpers.SendMessage(h.bot, userID, message)
 	if err != nil {
 		h.logger.Error("Sending message to telegram", slog.Any("error", err.Error()))
@@ -246,15 +273,21 @@ func formatSubscriptionsFromResponse(response client.ListLinksResponse, logger *
 		logger.Warn("link is nil")
 		return "Нет активных подписок."
 	}
+
 	var result strings.Builder
+
 	result.WriteString("Ваши текущие подписки:\n")
+
 	isAllLinksNil := true
+
 	for i, sub := range *response.Links {
 		if sub.Url == nil {
 			logger.Warn("Checking response", slog.Any("subscription url", nil))
 			continue
 		}
+
 		isAllLinksNil = false
+
 		result.WriteString(fmt.Sprintf("\n%d. Ссылка: %s\n", i+1, *sub.Url))
 		// Add tags
 		if sub.Tags != nil && len(*sub.Tags) > 0 {
@@ -270,11 +303,13 @@ func formatSubscriptionsFromResponse(response client.ListLinksResponse, logger *
 			result.WriteString("   Фильтры: отсутствуют\n")
 		}
 	}
+
 	if isAllLinksNil {
 		result.Reset()
 		result.WriteString("Нет активных подписок.")
 		logger.Warn("All subscriptions url are nil")
 	}
+
 	return result.String()
 }
 

@@ -38,7 +38,7 @@ func main() {
 		return
 	}
 
-	checker, err := checker.NewChecker(cfg, logger, repo)
+	checker, err := checker.NewChecker(cfg, logger, repo, cfg)
 	if err != nil {
 		logger.Error("checker startup", slog.Any("error", err.Error()))
 		return
@@ -70,19 +70,19 @@ func main() {
 
 	scheduler.Start()
 	// Может быть нужно создать еще одну абстракцию над http сервером?
-	switch cfg.MessageTransportType {
-	case "http":
-		e := echo.New()
+	// switch cfg.MessageTransportType {
+	// case "http":
+	e := echo.New()
 
-		// Create an instance of your server implementation
-		myServer := server.NewHTTPScrapperServer(repo, logger)
+	// Create an instance of your server implementation
+	myServer := server.NewHTTPScrapperServer(repo, logger)
 
-		// Register the handlers with the Echo router
-		unimplemented_server.RegisterHandlers(e, myServer)
+	// Register the handlers with the Echo router
+	unimplemented_server.RegisterHandlers(e, myServer)
 
-		// Start the server
-		e.Logger.Fatal(e.Start(":8080"))
-	case "kafka":
-		// TODO: DO
-	}
+	// Start the server
+	e.Logger.Fatal(e.Start(":8080"))
+	// case "kafka":
+	// 	// TODO: DO
+	// }
 }
