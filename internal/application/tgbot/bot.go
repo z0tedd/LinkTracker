@@ -6,7 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client"
-	"github.com/central-university-dev/go-z0tedd/internal/application/tgbot/handlers"
+	http_handler "github.com/central-university-dev/go-z0tedd/internal/application/tgbot/handlers/http"
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/statemanager"
 )
 
@@ -48,8 +48,12 @@ func (b *TrackingBot) Run() {
 		b.logger.Warn("Scrapper client", slog.Any("error", err.Error()))
 	}
 
+	handler := http_handler.NewHttpHandler(b.botAPI, clientScrapper, states, b.logger)
+
 	updates := b.botAPI.GetUpdatesChan(updateConfig)
 	for update := range updates {
-		handlers.HandleUpdate(b.botAPI, &update, clientScrapper, states, b.logger)
+		handler.HandleUpdate(&update)
+
+		// handlers.HandleUpdate(b.botAPI, &update, clientScrapper, states, b.logger)
 	}
 }

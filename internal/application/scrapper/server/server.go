@@ -21,16 +21,16 @@ type Repository interface {
 	GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error)
 }
 
-type ScrapperServer struct {
+type HTTPScrapperServer struct {
 	repo   Repository
 	logger *slog.Logger
 }
 
-func NewScrapperServer(repo Repository, logger *slog.Logger) *ScrapperServer {
-	return &ScrapperServer{repo: repo, logger: logger}
+func NewHTTPScrapperServer(repo Repository, logger *slog.Logger) *HTTPScrapperServer {
+	return &HTTPScrapperServer{repo: repo, logger: logger}
 }
 
-func (s *ScrapperServer) DeleteLinks(ctx echo.Context, params server.DeleteLinksParams) error {
+func (s *HTTPScrapperServer) DeleteLinks(ctx echo.Context, params server.DeleteLinksParams) error {
 	err := s.repo.RemoveSubscription(params.TgChatId, params.Link)
 	if err != nil {
 		s.logger.Error("Failed to delete subscription",
@@ -48,7 +48,7 @@ func (s *ScrapperServer) DeleteLinks(ctx echo.Context, params server.DeleteLinks
 	return ctx.JSON(http.StatusOK, map[string]string{"message": "Link deleted"})
 }
 
-func (s *ScrapperServer) GetLinks(ctx echo.Context, params server.GetLinksParams) error {
+func (s *HTTPScrapperServer) GetLinks(ctx echo.Context, params server.GetLinksParams) error {
 	subscriptions, err := s.repo.GetSubscriptionsForUser(params.TgChatId)
 	if err != nil {
 		s.logger.Error("Failed to retrieve subscriptions",
@@ -70,7 +70,7 @@ func (s *ScrapperServer) GetLinks(ctx echo.Context, params server.GetLinksParams
 	return ctx.JSON(http.StatusOK, response)
 }
 
-func (s *ScrapperServer) PostLinks(ctx echo.Context, params server.PostLinksParams) error {
+func (s *HTTPScrapperServer) PostLinks(ctx echo.Context, params server.PostLinksParams) error {
 	var requestBody server.PostLinksJSONRequestBody
 	if err := ctx.Bind(&requestBody); err != nil {
 		s.logger.Error("Invalid request body",
@@ -117,7 +117,7 @@ func (s *ScrapperServer) PostLinks(ctx echo.Context, params server.PostLinksPara
 }
 
 // //nolint:revive,stylecheck // implementation of generated interface.
-func (s *ScrapperServer) DeleteTgChatId(ctx echo.Context, id int64) error {
+func (s *HTTPScrapperServer) DeleteTgChatId(ctx echo.Context, id int64) error {
 	err := s.repo.DeleteUser(id)
 	if err != nil {
 		s.logger.Error("Failed to delete user",
@@ -135,7 +135,7 @@ func (s *ScrapperServer) DeleteTgChatId(ctx echo.Context, id int64) error {
 }
 
 // //nolint:revive,stylecheck // implementation of generated interface.
-func (s *ScrapperServer) PostTgChatId(ctx echo.Context, id int64) error {
+func (s *HTTPScrapperServer) PostTgChatId(ctx echo.Context, id int64) error {
 	err := s.repo.RegisterUser(id)
 	if err != nil {
 		s.logger.Error("Failed to register user",

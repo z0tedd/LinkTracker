@@ -24,10 +24,9 @@ func main() {
 		logger.Error(("TELEGRAM_BOT_TOKEN is not set"))
 		return
 	}
-
 	botAPI, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
-		logger.Error("exiting app, critical error", slog.Any("botAPI", err))
+		logger.Error("exiting app, critical error", slog.Any("bot_api", err), slog.Any("token", cfg.BotToken))
 		return
 	}
 

@@ -75,7 +75,7 @@ func main() {
 		e := echo.New()
 
 		// Create an instance of your server implementation
-		myServer := server.NewScrapperServer(repo, logger)
+		myServer := server.NewHTTPScrapperServer(repo, logger)
 
 		// Register the handlers with the Echo router
 		unimplemented_server.RegisterHandlers(e, myServer)

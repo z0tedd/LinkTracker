@@ -8,5 +8,7 @@ type Config struct {
 	MessageTransportType string `env:"MESSAGE_TRANSPORT_TYPE" envDefault:"http"`
 	KafkaAddresses       string `env:"KAFKA_ADDRESSES" envDefault:"localhost:9092"`
 	BotBaseURL           string `env:"BOT_BASE_URL" envDefault:"http://localhost:8081"`
+	ScrapperGroupID      string `env:"SCRAPPER_GROUP_ID" envDefault:"scrapper_consumer"`
+	BotGroupID           string `env:"BOT_GROUP_ID" envDefault:"bot_consumer"`
 	KafkaTopic           string `env:"KAFKA_TOPIC" envDefault:"messages"`
 }
