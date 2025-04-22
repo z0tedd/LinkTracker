@@ -31,9 +31,9 @@ func NewChecker(config *config.Config, logger *slog.Logger, repo SubscriptionRep
 		notificationSender notification.Sender
 		err                error
 	)
+
 	switch cfg.MessageTransportType {
 	case "http":
-
 		notificationSender, err = notification.NewHTTPNotificationSender(config.BotBaseURL, logger) // TODO: replace to fabric
 		if err != nil {
 			return nil, fmt.Errorf("notification sender creating: %w", err)
@@ -103,7 +103,6 @@ func (c Checker) CheckAllSubscriptions(ctx context.Context) {
 	c.logger.Info("Starting subscription checks")
 
 	for subID := range c.repo.GetSubsID() {
-		// c.CheckSubscription(ctx, subID)
-		c.CheckSubscriptionFixture(ctx, subID)
+		c.CheckSubscription(ctx, subID)
 	}
 }

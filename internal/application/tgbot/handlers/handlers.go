@@ -66,6 +66,9 @@ func HandleUpdate(
 		handleUntrackCommand(bot, userID, states, logger)
 	case "/list":
 		handleListCommand(bot, userID, apiClient, logger)
+	case "/list_with_tags":
+		handleListGroupedByTagsCommand(bot, userID, apiClient, logger)
+
 	default:
 		handleStateMachine(bot, userID, states, msg.Text, apiClient, logger)
 	}
@@ -147,6 +150,77 @@ func handleListCommand(bot *tgbotapi.BotAPI, userID int64, apiClient client.Clie
 
 	subscriptions := formatSubscriptionsFromResponse(listResponse, logger)
 	logAndSendMessage(bot, userID, logger, subscriptions)
+}
+
+// handleListCommand handles the /list command.
+func handleListGroupedByTagsCommand(bot *tgbotapi.BotAPI, userID int64, apiClient client.ClientInterface, logger *slog.Logger) {
+	ctx := context.Background()
+	params := client.GetLinksParams{TgChatId: userID}
+
+	resp, err := apiClient.GetLinks(ctx, &params)
+	if err != nil {
+		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Ошибка при получении списка подписок: %s", err.Error()))
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 404 {
+		logAndSendMessage(bot, userID, logger, "Нет активных подписок!")
+		return
+	}
+
+	if resp.StatusCode != 200 {
+		err = domain.StatusCodeNon200Error{Msg: "status code:", Code: resp.StatusCode}
+		logAndSendMessage(bot, userID, logger, fmt.Sprintf("Ошибка при получении списка подписок: %s", err.Error()))
+
+		return
+	}
+
+	var listResponse client.ListLinksResponse
+	if err = json.NewDecoder(resp.Body).Decode(&listResponse); err != nil {
+		logAndSendMessage(bot, userID, logger, "Ошибка при обработке данных.")
+		return
+	}
+
+	// Group subscriptions by tags
+	groupedByTags := make(map[string][]client.LinkResponse)
+
+	if listResponse.Links != nil {
+		for _, sub := range *listResponse.Links {
+			if sub.Tags != nil && len(*sub.Tags) > 0 {
+				for _, tag := range *sub.Tags {
+					groupedByTags[tag] = append(groupedByTags[tag], sub)
+				}
+			} else {
+				// Add to a default group for subscriptions without tags
+				groupedByTags["Без тегов"] = append(groupedByTags["Без тегов"], sub)
+			}
+		}
+	}
+
+	// Format the grouped subscriptions
+	var result strings.Builder
+	if len(groupedByTags) == 0 {
+		result.WriteString("Нет активных подписок.")
+	} else {
+		for tag, subs := range groupedByTags {
+			result.WriteString(fmt.Sprintf("\nТег: %s\n", tag))
+
+			for i, sub := range subs {
+				result.WriteString(fmt.Sprintf("  %d. Ссылка: %s\n", i+1, *sub.Url)) // ПРОД УПАЛ НА ЭТОМ МОМЕНТЕ
+
+				if sub.Filters != nil && len(*sub.Filters) > 0 {
+					result.WriteString(fmt.Sprintf("     Фильтры: %s\n", strings.Join(*sub.Filters, ", ")))
+				} else {
+					result.WriteString("     Фильтры: отсутствуют\n")
+				}
+			}
+		}
+	}
+
+	// Send the formatted message
+	logAndSendMessage(bot, userID, logger, result.String())
 }
 
 // handleStateMachine processes state-based interactions.

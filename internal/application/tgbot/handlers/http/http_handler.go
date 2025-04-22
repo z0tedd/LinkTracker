@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-redis/redis"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	client "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client"
@@ -25,10 +26,11 @@ type StateManager interface {
 
 // HTTPHandler represents the handler for Telegram bot updates.
 type HTTPHandler struct {
-	bot       *tgbotapi.BotAPI
-	apiClient *client.Client
-	states    StateManager
-	logger    *slog.Logger
+	bot         *tgbotapi.BotAPI
+	apiClient   *client.Client
+	states      StateManager
+	logger      *slog.Logger
+	redisClient redis.UniversalClient
 }
 
 // NewHttpHandler creates a new instance of HTTPHandler.
@@ -108,9 +110,36 @@ func (h *HTTPHandler) handleUntrackCommand(userID int64) {
 	h.logAndSendMessage(userID, "Введите ссылку для удаления из отслеживания:")
 }
 
-// handleListCommand handles the /list command.
 func (h *HTTPHandler) handleListCommand(userID int64) {
 	ctx := context.Background()
+
+	// Define the Redis cache key
+	cacheKey := fmt.Sprintf("subscriptions:%d", userID)
+
+	// Step 1: Check Redis cache for existing data
+	cachedData, err := h.redisClient.Get(cacheKey).Result()
+	if err == nil {
+		// Cache hit: Data found in Redis
+		var listResponse client.ListLinksResponse
+
+		// Deserialize the cached JSON data into the ListLinksResponse struct
+		if err := json.Unmarshal([]byte(cachedData), &listResponse); err != nil {
+			h.logAndSendMessage(userID, "Ошибка при десериализации данных из кэша.")
+			return
+		}
+
+		// Format the subscriptions response
+		subscriptions := formatSubscriptionsFromResponse(listResponse, h.logger)
+		h.logAndSendMessage(userID, subscriptions)
+
+		return
+	} else if err != redis.Nil {
+		// Redis error (not a cache miss)
+		h.logAndSendMessage(userID, "Ошибка при доступе к кэшу.")
+		return
+	}
+
+	// Step 2: Cache miss - Fetch data from the API
 	params := client.GetLinksParams{TgChatId: userID}
 
 	resp, err := h.apiClient.GetLinks(ctx, &params)
@@ -139,7 +168,26 @@ func (h *HTTPHandler) handleListCommand(userID int64) {
 		return
 	}
 
+	// Format the subscriptions response
 	subscriptions := formatSubscriptionsFromResponse(listResponse, h.logger)
+
+	// Step 3: Store the fetched data in Redis without expiration
+	listResponseJSON, err := json.Marshal(listResponse) // Serialize the struct to JSON
+	if err != nil {
+		h.logger.Error("Ошибка при сериализации данных для кэша: %s", err.Error())
+		h.logAndSendMessage(userID, "Ошибка при сохранении данных в кэш.")
+
+		return
+	}
+
+	if err := h.redisClient.Set(cacheKey, string(listResponseJSON), 0).Err(); err != nil { // 0 means no expiration
+		h.logger.Error("Ошибка при сохранении данных в кэш: %s", err.Error())
+		h.logAndSendMessage(userID, "Ошибка при сохранении данных в кэш.")
+
+		return
+	}
+
+	// Send the formatted subscriptions to the user
 	h.logAndSendMessage(userID, subscriptions)
 }
 
@@ -222,6 +270,11 @@ func (h *HTTPHandler) handleWaitingForFilters(userID int64, text string) {
 		h.logger.Warn("Answer from server", slog.Any("code", *apiError.Code), slog.Any("Description", *apiError.Description))
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при создании подписки: %s", resp.Status))
 	}
+
+	err = h.invalidateCache(userID)
+	if err != nil {
+		return // TODO:
+	}
 }
 
 // handleWaitingForUntrackLink handles the "waiting_for_untrack_link" state.
@@ -246,6 +299,11 @@ func (h *HTTPHandler) handleWaitingForUntrackLink(userID int64, link string) {
 	}
 
 	h.states.SetState(userID, "")
+
+	err = h.invalidateCache(userID)
+	if err != nil {
+		return // TODO:
+	}
 }
 
 // logAndSendMessage logs an error and sends a message to the user.
@@ -316,4 +374,20 @@ func formatSubscriptionsFromResponse(response client.ListLinksResponse, logger *
 // parseFilters parses filters from the input string.
 func parseFilters(input string) []string {
 	return strings.Fields(input)
+}
+
+func (h *HTTPHandler) invalidateCache(userID int64) error {
+	// Define the Redis cache key
+	cacheKey := fmt.Sprintf("subscriptions:%d", userID)
+
+	// Delete the cache entry for the user
+	err := h.redisClient.Del(cacheKey).Err()
+	if err != nil {
+		h.logger.Error("deleting cache from redis: %s", err.Error())
+		return err
+	}
+
+	h.logger.Info("Кэш успешно инвалидирован для пользователя с ID: %d", userID)
+
+	return nil
 }
