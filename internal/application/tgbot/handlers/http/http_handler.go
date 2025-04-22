@@ -34,12 +34,15 @@ type HTTPHandler struct {
 }
 
 // NewHttpHandler creates a new instance of HTTPHandler.
-func NewHTTPHandler(bot *tgbotapi.BotAPI, apiClient *client.Client, states StateManager, logger *slog.Logger) *HTTPHandler {
+func NewHTTPHandler(bot *tgbotapi.BotAPI, apiClient *client.Client,
+	states StateManager, logger *slog.Logger, redisClient redis.UniversalClient,
+) *HTTPHandler {
 	return &HTTPHandler{
-		bot:       bot,
-		apiClient: apiClient,
-		states:    states,
-		logger:    logger,
+		bot:         bot,
+		apiClient:   apiClient,
+		states:      states,
+		logger:      logger,
+		redisClient: redisClient,
 	}
 }
 
@@ -63,6 +66,8 @@ func (h *HTTPHandler) HandleUpdate(update *tgbotapi.Update) {
 		h.handleUntrackCommand(userID)
 	case "/list":
 		h.handleListCommand(userID)
+	case "/list_with_tags":
+		h.handleListGroupedByTagsCommand(userID)
 	default:
 		h.handleStateMachine(userID, msg.Text)
 	}
@@ -110,84 +115,27 @@ func (h *HTTPHandler) handleUntrackCommand(userID int64) {
 	h.logAndSendMessage(userID, "Введите ссылку для удаления из отслеживания:")
 }
 
-func (h *HTTPHandler) handleListCommand(userID int64) {
-	ctx := context.Background()
-
-	// Define the Redis cache key
-	cacheKey := fmt.Sprintf("subscriptions:%d", userID)
-
-	// Step 1: Check Redis cache for existing data
-	cachedData, err := h.redisClient.Get(cacheKey).Result()
-	if err == nil {
-		// Cache hit: Data found in Redis
-		var listResponse client.ListLinksResponse
-
-		// Deserialize the cached JSON data into the ListLinksResponse struct
-		if err := json.Unmarshal([]byte(cachedData), &listResponse); err != nil {
-			h.logAndSendMessage(userID, "Ошибка при десериализации данных из кэша.")
-			return
-		}
-
-		// Format the subscriptions response
-		subscriptions := formatSubscriptionsFromResponse(listResponse, h.logger)
-		h.logAndSendMessage(userID, subscriptions)
-
-		return
-	} else if err != redis.Nil {
-		// Redis error (not a cache miss)
-		h.logAndSendMessage(userID, "Ошибка при доступе к кэшу.")
-		return
-	}
-
-	// Step 2: Cache miss - Fetch data from the API
-	params := client.GetLinksParams{TgChatId: userID}
-
-	resp, err := h.apiClient.GetLinks(ctx, &params)
+func (h *HTTPHandler) handleListGroupedByTagsCommand(userID int64) {
+	listResponse, err := h.fetchAndCacheSubscriptions(userID)
 	if err != nil {
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при получении списка подписок: %s", err.Error()))
 		return
 	}
 
-	if resp.StatusCode == 404 {
-		h.logAndSendMessage(userID, "Нет активных подписок!")
-		return
-	}
+	// Format the grouped subscriptions response
+	groupedSubscriptions := formatGroupedSubscriptions(*listResponse, h.logger)
+	h.logAndSendMessage(userID, groupedSubscriptions)
+}
 
-	if resp.StatusCode != 200 {
-		err = domain.StatusCodeNon200Error{Msg: "status code:", Code: resp.StatusCode}
+func (h *HTTPHandler) handleListCommand(userID int64) {
+	listResponse, err := h.fetchAndCacheSubscriptions(userID)
+	if err != nil {
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при получении списка подписок: %s", err.Error()))
-
-		return
-	}
-
-	defer resp.Body.Close()
-
-	var listResponse client.ListLinksResponse
-	if err = json.NewDecoder(resp.Body).Decode(&listResponse); err != nil {
-		h.logAndSendMessage(userID, "Ошибка при обработке данных.")
 		return
 	}
 
 	// Format the subscriptions response
-	subscriptions := formatSubscriptionsFromResponse(listResponse, h.logger)
-
-	// Step 3: Store the fetched data in Redis without expiration
-	listResponseJSON, err := json.Marshal(listResponse) // Serialize the struct to JSON
-	if err != nil {
-		h.logger.Error("Ошибка при сериализации данных для кэша: %s", err.Error())
-		h.logAndSendMessage(userID, "Ошибка при сохранении данных в кэш.")
-
-		return
-	}
-
-	if err := h.redisClient.Set(cacheKey, string(listResponseJSON), 0).Err(); err != nil { // 0 means no expiration
-		h.logger.Error("Ошибка при сохранении данных в кэш: %s", err.Error())
-		h.logAndSendMessage(userID, "Ошибка при сохранении данных в кэш.")
-
-		return
-	}
-
-	// Send the formatted subscriptions to the user
+	subscriptions := formatSubscriptionsFromResponse(*listResponse, h.logger)
 	h.logAndSendMessage(userID, subscriptions)
 }
 
@@ -273,7 +221,8 @@ func (h *HTTPHandler) handleWaitingForFilters(userID int64, text string) {
 
 	err = h.invalidateCache(userID)
 	if err != nil {
-		return // TODO:
+		h.logger.Error("invalidating cache", slog.Any("error", err))
+		return
 	}
 }
 
@@ -302,7 +251,8 @@ func (h *HTTPHandler) handleWaitingForUntrackLink(userID int64, link string) {
 
 	err = h.invalidateCache(userID)
 	if err != nil {
-		return // TODO:
+		h.logger.Error("invalidating cache", slog.Any("error", err))
+		return
 	}
 }
 
@@ -383,11 +333,125 @@ func (h *HTTPHandler) invalidateCache(userID int64) error {
 	// Delete the cache entry for the user
 	err := h.redisClient.Del(cacheKey).Err()
 	if err != nil {
-		h.logger.Error("deleting cache from redis: %s", err.Error())
+		h.logger.Error("deleting cache from redis", slog.Any("error", err))
 		return err
 	}
 
-	h.logger.Info("Кэш успешно инвалидирован для пользователя с ID: %d", userID)
+	h.logger.Info("Кэш успешно инвалидирован для пользователя с ID", slog.Int64("userID", userID))
 
 	return nil
+}
+
+func formatGroupedSubscriptions(response client.ListLinksResponse, logger *slog.Logger) string {
+	if response.Links == nil || len(*response.Links) == 0 {
+		logger.Warn("No links in response")
+		return "Нет активных подписок."
+	}
+
+	// Group subscriptions by tags
+	groupedByTags := make(map[string][]client.LinkResponse)
+
+	for _, sub := range *response.Links {
+		if sub.Tags != nil && len(*sub.Tags) > 0 {
+			for _, tag := range *sub.Tags {
+				groupedByTags[tag] = append(groupedByTags[tag], sub)
+			}
+		} else {
+			// Add to a default group for subscriptions without tags
+			groupedByTags["Без тегов"] = append(groupedByTags["Без тегов"], sub)
+		}
+	}
+
+	// Format the grouped subscriptions
+	var result strings.Builder
+	if len(groupedByTags) == 0 {
+		result.WriteString("Нет активных подписок.")
+	} else {
+		for tag, subs := range groupedByTags {
+			result.WriteString(fmt.Sprintf("\nТег: %s\n", tag))
+
+			for i, sub := range subs {
+				if sub.Url == nil {
+					logger.Warn("Subscription URL is nil", slog.Any("subscription", sub))
+					continue
+				}
+
+				result.WriteString(fmt.Sprintf("  %d. Ссылка: %s\n", i+1, *sub.Url))
+
+				if sub.Filters != nil && len(*sub.Filters) > 0 {
+					result.WriteString(fmt.Sprintf("     Фильтры: %s\n", strings.Join(*sub.Filters, ", ")))
+				} else {
+					result.WriteString("     Фильтры: отсутствуют\n")
+				}
+			}
+		}
+	}
+
+	return result.String()
+}
+
+func (h *HTTPHandler) fetchAndCacheSubscriptions(userID int64) (*client.ListLinksResponse, error) {
+	ctx := context.Background()
+	cacheKey := fmt.Sprintf("subscriptions:%d", userID)
+
+	// Step 1: Check Redis cache for existing data
+	cachedData, err := h.redisClient.Get(cacheKey).Result()
+	if err == nil {
+		// Cache hit: Data found in Redis
+		var listResponse client.ListLinksResponse
+		if err := json.Unmarshal([]byte(cachedData), &listResponse); err != nil {
+			h.logger.Error("Ошибка при десериализации данных из кэша", slog.Any("error", err))
+			return nil, err
+		}
+		h.logger.Info("Got data from redis!")
+
+		return &listResponse, nil
+	} else if err != redis.Nil {
+		// Redis error (not a cache miss)
+		h.logger.Error("Ошибка при получении данных из Redis", slog.Any("error", err))
+		return nil, err
+	}
+
+	// Step 2: Cache miss - Fetch data from the API
+	params := client.GetLinksParams{TgChatId: userID}
+
+	resp, err := h.apiClient.GetLinks(ctx, &params)
+	if err != nil {
+		h.logger.Warn("Ошибка при получении списка подписок", slog.Any("error", err))
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 404 {
+		return nil, domain.StatusCodeNon200Error{Msg: "status code:", Code: resp.StatusCode}
+	}
+
+	if resp.StatusCode != 200 {
+		err = domain.StatusCodeNon200Error{Msg: "status code:", Code: resp.StatusCode}
+		h.logger.Warn("Unexpected status code while fetching subscriptions", slog.Any("error", err))
+
+		return nil, err
+	}
+
+	// Decode the response
+	var listResponse client.ListLinksResponse
+	if err = json.NewDecoder(resp.Body).Decode(&listResponse); err != nil {
+		h.logger.Warn("Ошибка при декодировании данных", slog.Any("error", err))
+		return nil, err
+	}
+
+	// Step 3: Store the fetched data in Redis without expiration
+	listResponseJSON, err := json.Marshal(listResponse)
+	if err != nil {
+		h.logger.Error("Ошибка при сериализации данных для кэша", slog.Any("error", err))
+		return nil, err
+	}
+
+	if err := h.redisClient.Set(cacheKey, string(listResponseJSON), 0).Err(); err != nil {
+		h.logger.Error("Ошибка при сохранении данных в кэш", slog.Any("error", err))
+		return nil, err
+	}
+
+	return &listResponse, nil
 }

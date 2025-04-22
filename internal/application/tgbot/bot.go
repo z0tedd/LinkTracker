@@ -3,20 +3,23 @@ package tgbot
 import (
 	"log/slog"
 
+	"github.com/go-redis/redis"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client"
 	http_handler "github.com/central-university-dev/go-z0tedd/internal/application/tgbot/handlers/http"
+	"github.com/central-university-dev/go-z0tedd/internal/config"
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/statemanager"
 )
 
 type TrackingBot struct {
 	botAPI *tgbotapi.BotAPI
 	logger *slog.Logger
+	cfg    *config.Config // I need not only redis link, but also timeout's in hw4
 }
 
-func NewTrackingBot(botAPI *tgbotapi.BotAPI, logger *slog.Logger) (*TrackingBot, error) {
-	return &TrackingBot{botAPI: botAPI, logger: logger}, nil
+func NewTrackingBot(botAPI *tgbotapi.BotAPI, logger *slog.Logger, cfg *config.Config) (*TrackingBot, error) {
+	return &TrackingBot{botAPI: botAPI, logger: logger, cfg: cfg}, nil
 }
 
 func (b *TrackingBot) Run() {
@@ -44,16 +47,22 @@ func (b *TrackingBot) Run() {
 
 	states := statemanager.NewInMemoryStateManager()
 
-	clientScrapper, err := client.NewClient("http://localhost:8080")
+	clientScrapper, err := client.NewClient("http://localhost:8080") // TODO: mv to config
 	if err != nil {
 		b.logger.Warn("Scrapper client", slog.Any("error", err.Error()))
 	}
 
-	handler := http_handler.NewHTTPHandler(b.botAPI, clientScrapper, states, b.logger)
+	redisOpts, err := redis.ParseURL(b.cfg.RedisURL)
+	if err != nil {
+		b.logger.Error("parsing redis url", slog.Any("error", err))
+	}
+
+	redisClient := redis.NewClient(redisOpts)
+	handler := http_handler.NewHTTPHandler(b.botAPI, clientScrapper, states, b.logger, redisClient)
 
 	updates := b.botAPI.GetUpdatesChan(updateConfig)
 	for update := range updates {
+		// skibidi sigma goida rizz handlers.HandleUpdate(b.botAPI, &update, clientScrapper, states, b.logger)
 		handler.HandleUpdate(&update)
-		// handlers.HandleUpdate(b.botAPI, &update, clientScrapper, states, b.logger)
 	}
 }

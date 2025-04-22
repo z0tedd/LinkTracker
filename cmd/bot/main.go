@@ -21,6 +21,7 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	cfg := config.Config{}
 
+	// TODO: Унести уровень логгирования в конфиг
 	ctx := context.Background()
 	// typesafe config
 	err := env.Parse(&cfg)
@@ -35,7 +36,7 @@ func main() {
 		return
 	}
 
-	bot, err := tgbot.NewTrackingBot(botAPI, logger)
+	bot, err := tgbot.NewTrackingBot(botAPI, logger, &cfg)
 	if err != nil {
 		logger.Error("exiting app, critical error", slog.Any("tracking bot", err))
 		return

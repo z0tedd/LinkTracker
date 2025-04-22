@@ -11,4 +11,5 @@ type Config struct {
 	ScrapperGroupID      string `env:"SCRAPPER_GROUP_ID" envDefault:"scrapper_consumer"`
 	BotGroupID           string `env:"BOT_GROUP_ID" envDefault:"bot_consumer"`
 	KafkaTopic           string `env:"KAFKA_TOPIC" envDefault:"messages"`
+	RedisURL             string `env:"REDIS_URL"`
 }
