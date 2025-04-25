@@ -11,6 +11,8 @@ import (
 
 	unimplemented_server "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/server"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/checker"
+	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/fetchers"
+	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/notification"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/server"
 	"github.com/central-university-dev/go-z0tedd/internal/config"
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
@@ -38,7 +40,15 @@ func main() {
 		return
 	}
 
-	checker, err := checker.NewChecker(cfg, logger, repo, cfg)
+	fetcherFabric := fetchers.NewDefaultFetcherFactory(logger)
+
+	notificationSender, err := notification.NewSender(cfg, logger)
+	if err != nil {
+		logger.Error("starting app", "error", err)
+		return
+	}
+
+	checker, err := checker.NewChecker(cfg, logger, repo, notificationSender, fetcherFabric)
 	if err != nil {
 		logger.Error("checker startup", slog.Any("error", err.Error()))
 		return
@@ -82,7 +92,4 @@ func main() {
 
 	// Start the server
 	e.Logger.Fatal(e.Start(":8080"))
-	// case "kafka":
-	// 	// TODO: DO
-	// }
 }

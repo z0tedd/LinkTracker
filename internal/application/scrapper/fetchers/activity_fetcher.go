@@ -10,6 +10,10 @@ import (
 	"github.com/central-university-dev/go-z0tedd/pkg"
 )
 
+type FetcherFactory interface {
+	NewFetcherFromSub(sub *domain.Subscription) (Fetcher, error)
+}
+
 type Fetcher interface {
 	Fetch(ctx context.Context) (domain.Activity, bool)
 }
@@ -27,43 +31,45 @@ func (f BasicFetcher) Fetch(_ context.Context) (domain.Activity, bool) {
 	return domain.Activity{}, false
 }
 
-type ActivityFetcher struct {
-	activityFetcher Fetcher
-	logger          *slog.Logger
-}
-
-func (f *ActivityFetcher) Fetch(ctx context.Context) (domain.Activity, bool) {
-	return f.activityFetcher.Fetch(ctx)
-}
+// type ActivityFetcher struct {
+// 	activityFetcher Fetcher
+// 	logger          *slog.Logger
+// }
+//
+// func (f *ActivityFetcher) Fetch(ctx context.Context) (domain.Activity, bool) {
+// 	return f.activityFetcher.Fetch(ctx)
+// }
 
 // This function set activityFetcher by Subscription url hostname.
 // Future improvements - make Fetch(ctx, sub) and move stategy choosing logic to it.
-func (f *ActivityFetcher) SetFetcherBySub(sub *domain.Subscription) error {
+type DefaultFetcherFactory struct {
+	logger *slog.Logger
+}
+
+func NewDefaultFetcherFactory(logger *slog.Logger) DefaultFetcherFactory {
+	return DefaultFetcherFactory{logger: logger}
+}
+
+func (ff DefaultFetcherFactory) NewFetcherFromSub(sub *domain.Subscription) (Fetcher, error) {
 	parsedURL, err := url.Parse(sub.URL)
 	if err != nil {
-		return fmt.Errorf("invalid URL: %w", err)
+		return nil, fmt.Errorf("creating fetcher: %w", err)
 	}
 
 	hostname := parsedURL.Hostname()
 	switch hostname {
 	case pkg.Stackoverflow:
-		f.activityFetcher, err = NewStackOverflowFetcher(sub, f.logger)
+		return NewStackOverflowFetcher(sub, ff.logger)
 
 	case pkg.Github:
-		f.activityFetcher, err = NewGithubFetcher(sub, f.logger)
+		return NewGithubFetcher(sub, ff.logger)
 
 	default:
-		f.activityFetcher = NewBasicFetcher(f.logger)
+		return NewBasicFetcher(ff.logger), fmt.Errorf("not implemented")
 	}
-
-	if err != nil {
-		return fmt.Errorf("activity fetcher error: %w", err)
-	}
-
-	return nil
 }
 
 // Fabric with Strategy.
-func NewActivityFetcher(logger *slog.Logger) (ActivityFetcher, error) {
-	return ActivityFetcher{activityFetcher: NewBasicFetcher(logger), logger: logger}, nil
-}
+// func NewActivityFetcher(logger *slog.Logger) (ActivityFetcher, error) {
+// 	return ActivityFetcher{activityFetcher: NewBasicFetcher(logger), logger: logger}, nil
+// }

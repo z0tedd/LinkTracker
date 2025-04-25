@@ -2,7 +2,6 @@ package checker
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/fetchers"
@@ -21,37 +20,14 @@ type Checker struct {
 	repo               SubscriptionRepository
 	logger             *slog.Logger
 	notificationSender notification.Sender
-	activityFetcher    fetchers.ActivityFetcher
+	fetcherFabric      fetchers.FetcherFactory
 	cfg                *config.Config
 }
 
-// TODO: Rewrite with the DI(no constructors for interfaces).
-func NewChecker(config *config.Config, logger *slog.Logger, repo SubscriptionRepository, cfg *config.Config) (*Checker, error) {
-	var (
-		notificationSender notification.Sender
-		err                error
-	)
-
-	switch cfg.MessageTransportType {
-	case "http":
-		notificationSender, err = notification.NewHTTPNotificationSender(config.BotBaseURL, logger) // TODO: replace to fabric
-		if err != nil {
-			return nil, fmt.Errorf("notification sender creating: %w", err)
-		}
-	case "kafka":
-		notificationSender, err = notification.NewKafkaNotificationSender(cfg, logger)
-		if err != nil {
-			return nil, fmt.Errorf("notification sender creating: %w", err)
-		}
-	}
-
-	fetcher, err := fetchers.NewActivityFetcher(logger)
-	if err != nil {
-		logger.Error("failed to create ActivityFetcher", "error", err)
-		return nil, err
-	}
-
-	return &Checker{repo: repo, logger: logger, notificationSender: notificationSender, activityFetcher: fetcher}, nil
+func NewChecker(cfg *config.Config, logger *slog.Logger, repo SubscriptionRepository,
+	notificationSender notification.Sender, fetcherFabric fetchers.FetcherFactory,
+) (*Checker, error) {
+	return &Checker{repo: repo, logger: logger, notificationSender: notificationSender, cfg: cfg, fetcherFabric: fetcherFabric}, nil
 }
 
 func (c Checker) CheckSubscription(ctx context.Context, subID int64) {
@@ -61,13 +37,13 @@ func (c Checker) CheckSubscription(ctx context.Context, subID int64) {
 		return
 	}
 
-	err = c.activityFetcher.SetFetcherBySub(&sub)
+	activityFetcher, err := c.fetcherFabric.NewFetcherFromSub(&sub)
 	if err != nil {
 		c.logger.Error("failed to set stategy for fetcher", "error", err)
 		return
 	}
 
-	newActivity, updated := c.activityFetcher.Fetch(ctx)
+	newActivity, updated := activityFetcher.Fetch(ctx)
 	if updated {
 		sub.LastActivity = newActivity
 

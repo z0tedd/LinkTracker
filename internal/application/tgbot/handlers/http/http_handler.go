@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-redis/redis"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -326,6 +327,7 @@ func parseFilters(input string) []string {
 	return strings.Fields(input)
 }
 
+// TODO: Добавить повторную обработку по таймауту черзе горутину.
 func (h *HTTPHandler) invalidateCache(userID int64) error {
 	// Define the Redis cache key
 	cacheKey := fmt.Sprintf("subscriptions:%d", userID)
@@ -403,6 +405,7 @@ func (h *HTTPHandler) fetchAndCacheSubscriptions(userID int64) (*client.ListLink
 			h.logger.Error("Ошибка при десериализации данных из кэша", slog.Any("error", err))
 			return nil, err
 		}
+
 		h.logger.Info("Got data from redis!")
 
 		return &listResponse, nil
@@ -448,7 +451,7 @@ func (h *HTTPHandler) fetchAndCacheSubscriptions(userID int64) (*client.ListLink
 		return nil, err
 	}
 
-	if err := h.redisClient.Set(cacheKey, string(listResponseJSON), 0).Err(); err != nil {
+	if err := h.redisClient.Set(cacheKey, string(listResponseJSON), time.Hour*24).Err(); err != nil {
 		h.logger.Error("Ошибка при сохранении данных в кэш", slog.Any("error", err))
 		return nil, err
 	}
