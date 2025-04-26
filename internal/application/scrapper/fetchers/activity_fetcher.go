@@ -31,17 +31,6 @@ func (f BasicFetcher) Fetch(_ context.Context) (domain.Activity, bool) {
 	return domain.Activity{}, false
 }
 
-// type ActivityFetcher struct {
-// 	activityFetcher Fetcher
-// 	logger          *slog.Logger
-// }
-//
-// func (f *ActivityFetcher) Fetch(ctx context.Context) (domain.Activity, bool) {
-// 	return f.activityFetcher.Fetch(ctx)
-// }
-
-// This function set activityFetcher by Subscription url hostname.
-// Future improvements - make Fetch(ctx, sub) and move stategy choosing logic to it.
 type DefaultFetcherFactory struct {
 	logger *slog.Logger
 }
@@ -68,8 +57,3 @@ func (ff DefaultFetcherFactory) NewFetcherFromSub(sub *domain.Subscription) (Fet
 		return NewBasicFetcher(ff.logger), fmt.Errorf("not implemented")
 	}
 }
-
-// Fabric with Strategy.
-// func NewActivityFetcher(logger *slog.Logger) (ActivityFetcher, error) {
-// 	return ActivityFetcher{activityFetcher: NewBasicFetcher(logger), logger: logger}, nil
-// }

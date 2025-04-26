@@ -1,6 +1,7 @@
 package tgbot
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/go-redis/redis"
@@ -22,7 +23,7 @@ func NewTrackingBot(botAPI *tgbotapi.BotAPI, logger *slog.Logger, cfg *config.Co
 	return &TrackingBot{botAPI: botAPI, logger: logger, cfg: cfg}, nil
 }
 
-func (b *TrackingBot) Run() {
+func (b *TrackingBot) Run(ctx context.Context) {
 	commands := []tgbotapi.BotCommand{
 		{Command: "start", Description: "Start the bot"},
 		{Command: "help", Description: "Get help"},
@@ -63,6 +64,6 @@ func (b *TrackingBot) Run() {
 	updates := b.botAPI.GetUpdatesChan(updateConfig)
 	for update := range updates {
 		// skibidi sigma goida rizz handlers.HandleUpdate(b.botAPI, &update, clientScrapper, states, b.logger)
-		handler.HandleUpdate(&update)
+		handler.HandleUpdate(ctx, &update)
 	}
 }

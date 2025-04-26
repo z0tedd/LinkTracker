@@ -48,7 +48,7 @@ func NewHTTPHandler(bot *tgbotapi.BotAPI, apiClient *client.Client,
 }
 
 // HandleUpdate processes incoming Telegram updates.
-func (h *HTTPHandler) HandleUpdate(update *tgbotapi.Update) {
+func (h *HTTPHandler) HandleUpdate(ctx context.Context, update *tgbotapi.Update) {
 	if update.Message == nil {
 		return
 	}
@@ -58,26 +58,24 @@ func (h *HTTPHandler) HandleUpdate(update *tgbotapi.Update) {
 
 	switch msg.Text {
 	case "/start":
-		h.handleStartCommand(userID)
+		h.handleStartCommand(ctx, userID)
 	case "/help":
-		h.handleHelpCommand(userID)
+		h.handleHelpCommand(ctx, userID)
 	case "/track":
-		h.handleTrackCommand(userID)
+		h.handleTrackCommand(ctx, userID)
 	case "/untrack":
-		h.handleUntrackCommand(userID)
+		h.handleUntrackCommand(ctx, userID)
 	case "/list":
-		h.handleListCommand(userID)
+		h.handleListCommand(ctx, userID)
 	case "/list_with_tags":
-		h.handleListGroupedByTagsCommand(userID)
+		h.handleListGroupedByTagsCommand(ctx, userID)
 	default:
-		h.handleStateMachine(userID, msg.Text)
+		h.handleStateMachine(ctx, userID, msg.Text)
 	}
 }
 
 // handleStartCommand handles the /start command.
-func (h *HTTPHandler) handleStartCommand(userID int64) {
-	ctx := context.Background()
-
+func (h *HTTPHandler) handleStartCommand(ctx context.Context, userID int64) {
 	resp, err := h.apiClient.PostTgChatId(ctx, userID)
 	if err != nil {
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при регистрации пользователя: %s", err.Error()))
@@ -98,26 +96,26 @@ func (h *HTTPHandler) handleStartCommand(userID int64) {
 }
 
 // handleHelpCommand handles the /help command.
-func (h *HTTPHandler) handleHelpCommand(userID int64) {
+func (h *HTTPHandler) handleHelpCommand(_ context.Context, userID int64) {
 	h.logAndSendMessage(userID, helpMessage())
 }
 
 // handleTrackCommand handles the /track command.
-func (h *HTTPHandler) handleTrackCommand(userID int64) {
+func (h *HTTPHandler) handleTrackCommand(_ context.Context, userID int64) {
 	h.states.SetState(userID, "waiting_for_link")
 	h.logger.Debug("State of user", slog.Any("state", h.states.GetState(userID)), slog.Any("userID", userID))
 	h.logAndSendMessage(userID, "Введите ссылку для отслеживания:")
 }
 
 // handleUntrackCommand handles the /untrack command.
-func (h *HTTPHandler) handleUntrackCommand(userID int64) {
+func (h *HTTPHandler) handleUntrackCommand(_ context.Context, userID int64) {
 	h.states.SetState(userID, "waiting_for_untrack_link")
 	h.logger.Debug("State of user", slog.Any("state", h.states.GetState(userID)), slog.Any("userID", userID))
 	h.logAndSendMessage(userID, "Введите ссылку для удаления из отслеживания:")
 }
 
-func (h *HTTPHandler) handleListGroupedByTagsCommand(userID int64) {
-	listResponse, err := h.fetchAndCacheSubscriptions(userID)
+func (h *HTTPHandler) handleListGroupedByTagsCommand(ctx context.Context, userID int64) {
+	listResponse, err := h.fetchAndCacheSubscriptions(ctx, userID)
 	if err != nil {
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при получении списка подписок: %s", err.Error()))
 		return
@@ -128,8 +126,8 @@ func (h *HTTPHandler) handleListGroupedByTagsCommand(userID int64) {
 	h.logAndSendMessage(userID, groupedSubscriptions)
 }
 
-func (h *HTTPHandler) handleListCommand(userID int64) {
-	listResponse, err := h.fetchAndCacheSubscriptions(userID)
+func (h *HTTPHandler) handleListCommand(ctx context.Context, userID int64) {
+	listResponse, err := h.fetchAndCacheSubscriptions(ctx, userID)
 	if err != nil {
 		h.logAndSendMessage(userID, fmt.Sprintf("Ошибка при получении списка подписок: %s", err.Error()))
 		return
@@ -141,7 +139,7 @@ func (h *HTTPHandler) handleListCommand(userID int64) {
 }
 
 // handleStateMachine processes state-based interactions.
-func (h *HTTPHandler) handleStateMachine(userID int64, text string) {
+func (h *HTTPHandler) handleStateMachine(ctx context.Context, userID int64, text string) {
 	state := h.states.GetState(userID)
 	switch state {
 	case "waiting_for_link":
@@ -149,9 +147,9 @@ func (h *HTTPHandler) handleStateMachine(userID int64, text string) {
 	case "waiting_for_tags":
 		h.handleWaitingForTags(userID, text)
 	case "waiting_for_filters":
-		h.handleWaitingForFilters(userID, text)
+		h.handleWaitingForFilters(ctx, userID, text)
 	case "waiting_for_untrack_link":
-		h.handleWaitingForUntrackLink(userID, text)
+		h.handleWaitingForUntrackLink(ctx, userID, text)
 	default:
 		h.logAndSendMessage(userID, "Неизвестная команда. Введите /help для справки.")
 	}
@@ -184,9 +182,9 @@ func (h *HTTPHandler) handleWaitingForTags(userID int64, text string) {
 }
 
 // handleWaitingForFilters handles the "waiting_for_filters" state.
-func (h *HTTPHandler) handleWaitingForFilters(userID int64, text string) {
+func (h *HTTPHandler) handleWaitingForFilters(ctx context.Context, userID int64, text string) {
 	filters := parseFilters(text)
-	ctx := context.Background()
+
 	params := client.PostLinksParams{TgChatId: userID}
 	link := h.states.GetData(userID, "subscription_link").(string)
 	tags := h.states.GetData(userID, "subscription_tags").([]string)
@@ -228,8 +226,7 @@ func (h *HTTPHandler) handleWaitingForFilters(userID int64, text string) {
 }
 
 // handleWaitingForUntrackLink handles the "waiting_for_untrack_link" state.
-func (h *HTTPHandler) handleWaitingForUntrackLink(userID int64, link string) {
-	ctx := context.Background()
+func (h *HTTPHandler) handleWaitingForUntrackLink(ctx context.Context, userID int64, link string) {
 	params := client.DeleteLinksParams{TgChatId: userID, Link: link}
 
 	resp, err := h.apiClient.DeleteLinks(ctx, &params)
@@ -392,8 +389,7 @@ func formatGroupedSubscriptions(response client.ListLinksResponse, logger *slog.
 	return result.String()
 }
 
-func (h *HTTPHandler) fetchAndCacheSubscriptions(userID int64) (*client.ListLinksResponse, error) {
-	ctx := context.Background()
+func (h *HTTPHandler) fetchAndCacheSubscriptions(ctx context.Context, userID int64) (*client.ListLinksResponse, error) {
 	cacheKey := fmt.Sprintf("subscriptions:%d", userID)
 
 	// Step 1: Check Redis cache for existing data

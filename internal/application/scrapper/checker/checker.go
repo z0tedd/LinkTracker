@@ -11,9 +11,9 @@ import (
 )
 
 type SubscriptionRepository interface {
-	GetSubsID() domain.Set
-	GetSubscription(subID int64) (domain.Subscription, error)
-	UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error
+	GetSubsID(ctx context.Context) *domain.Set
+	GetSubscription(ctx context.Context, subID int64) (*domain.Subscription, error)
+	UpdateSubscriptionActivity(ctx context.Context, subID int64, newActivity domain.Activity) error
 }
 
 type Checker struct {
@@ -31,13 +31,13 @@ func NewChecker(cfg *config.Config, logger *slog.Logger, repo SubscriptionReposi
 }
 
 func (c Checker) CheckSubscription(ctx context.Context, subID int64) {
-	sub, err := c.repo.GetSubscription(subID)
+	sub, err := c.repo.GetSubscription(ctx, subID)
 	if err != nil {
 		c.logger.Error("Failed to retrieve subscription", "error", err)
 		return
 	}
 
-	activityFetcher, err := c.fetcherFabric.NewFetcherFromSub(&sub)
+	activityFetcher, err := c.fetcherFabric.NewFetcherFromSub(sub)
 	if err != nil {
 		c.logger.Error("failed to set stategy for fetcher", "error", err)
 		return
@@ -47,13 +47,13 @@ func (c Checker) CheckSubscription(ctx context.Context, subID int64) {
 	if updated {
 		sub.LastActivity = newActivity
 
-		err = c.repo.UpdateSubscriptionActivity(subID, newActivity)
+		err = c.repo.UpdateSubscriptionActivity(ctx, subID, newActivity)
 		if err != nil {
 			c.logger.Error("Failed to update GitHub subscription activity", "error", err)
 			return
 		}
 
-		err = c.notificationSender.Send(ctx, &sub)
+		err = c.notificationSender.Send(ctx, sub)
 		if err != nil {
 			c.logger.Error("Failed to send updated subscription", "error", err)
 			return
@@ -62,13 +62,13 @@ func (c Checker) CheckSubscription(ctx context.Context, subID int64) {
 }
 
 func (c Checker) CheckSubscriptionFixture(ctx context.Context, subID int64) {
-	sub, err := c.repo.GetSubscription(subID)
+	sub, err := c.repo.GetSubscription(ctx, subID)
 	if err != nil {
 		c.logger.Error("Failed to send updated subscription", "error", err)
 		return
 	}
 
-	err = c.notificationSender.Send(ctx, &sub)
+	err = c.notificationSender.Send(ctx, sub)
 	if err != nil {
 		c.logger.Error("Failed to send updated subscription", "error", err)
 		return
@@ -78,7 +78,7 @@ func (c Checker) CheckSubscriptionFixture(ctx context.Context, subID int64) {
 func (c Checker) CheckAllSubscriptions(ctx context.Context) {
 	c.logger.Info("Starting subscription checks")
 
-	for subID := range c.repo.GetSubsID() {
+	for subID := range *c.repo.GetSubsID(ctx) {
 		c.CheckSubscription(ctx, subID)
 	}
 }

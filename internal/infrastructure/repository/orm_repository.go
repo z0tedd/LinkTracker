@@ -31,7 +31,7 @@ func NewORMRepository(db *pgxpool.Pool, logger *slog.Logger) *ORMRepository {
 }
 
 // RegisterUser registers a new user.
-func (r *ORMRepository) RegisterUser(userID int64) error {
+func (r *ORMRepository) RegisterUser(_ context.Context, userID int64) error {
 	r.logger.Debug("user registration", "userID", userID)
 	return nil
 }
@@ -39,37 +39,37 @@ func (r *ORMRepository) RegisterUser(userID int64) error {
 // DeleteUser deletes a user and removes their preferences.
 //
 //nolint:dupl //SQL and ORM repository has the same logic, but in specification we must create the same modules
-func (r *ORMRepository) DeleteUser(userID int64) error {
-	tx, err := r.db.Begin(context.Background())
+func (r *ORMRepository) DeleteUser(ctx context.Context, userID int64) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		r.logger.Error("failed to begin transaction", "error", err)
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
 	defer func() {
-		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
+		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
 			r.logger.Error("failed to rollback", "error", rollbackErr)
 		}
 	}()
 
 	// Step 1: Retrieve all subIDs associated with the user
-	subIDs, err := r.retrieveSubIDsForUser(tx, userID)
+	subIDs, err := r.retrieveSubIDsForUser(ctx, tx, userID)
 	if err != nil {
 		return err
 	}
 
 	// Step 2: Remove the userID from tgChatIDs for each subID
-	if err := r.removeUserIDFromTgChatIDs(tx, subIDs, userID); err != nil {
+	if err := r.removeUserIDFromTgChatIDs(ctx, tx, subIDs, userID); err != nil {
 		return err
 	}
 
 	// Step 3: Delete the user's preferences from the users_preferences table
-	if err := r.deleteUserPreferences(tx, userID); err != nil {
+	if err := r.deleteUserPreferences(ctx, tx, userID); err != nil {
 		return err
 	}
 
 	// Commit the transaction
-	if err := tx.Commit(context.Background()); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		r.logger.Error("failed to commit transaction", "error", err)
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
@@ -78,7 +78,7 @@ func (r *ORMRepository) DeleteUser(userID int64) error {
 }
 
 // Helper function to retrieve subIDs for a given user.
-func (r *ORMRepository) retrieveSubIDsForUser(tx pgx.Tx, userID int64) ([]int64, error) {
+func (r *ORMRepository) retrieveSubIDsForUser(ctx context.Context, tx pgx.Tx, userID int64) ([]int64, error) {
 	query := squirrel.Select("subID").
 		From("users_preferences").
 		Where(squirrel.Eq{"userID": userID}).
@@ -90,7 +90,7 @@ func (r *ORMRepository) retrieveSubIDsForUser(tx pgx.Tx, userID int64) ([]int64,
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
 
-	rows, err := tx.Query(context.Background(), sql, args...)
+	rows, err := tx.Query(ctx, sql, args...)
 	if err != nil {
 		r.logger.Error("failed to retrieve subIDs for user", "error", err)
 		return nil, fmt.Errorf("failed to retrieve subIDs for user: %w", err)
@@ -118,7 +118,7 @@ func (r *ORMRepository) retrieveSubIDsForUser(tx pgx.Tx, userID int64) ([]int64,
 }
 
 // Helper function to remove userID from tgChatIDs for each subID.
-func (r *ORMRepository) removeUserIDFromTgChatIDs(tx pgx.Tx, subIDs []int64, userID int64) error {
+func (r *ORMRepository) removeUserIDFromTgChatIDs(ctx context.Context, tx pgx.Tx, subIDs []int64, userID int64) error {
 	for _, subID := range subIDs {
 		updateQuery := squirrel.Update("subscriptions").
 			Set("tgChatIDs", squirrel.Expr("array_remove(tgChatIDs, ?)", userID)).
@@ -131,7 +131,7 @@ func (r *ORMRepository) removeUserIDFromTgChatIDs(tx pgx.Tx, subIDs []int64, use
 			return fmt.Errorf("failed to build update query: %w", err)
 		}
 
-		_, err = tx.Exec(context.Background(), sql, args...)
+		_, err = tx.Exec(ctx, sql, args...)
 		if err != nil {
 			r.logger.Error("failed to remove userID from tgChatIDs", "error", err)
 			return fmt.Errorf("failed to remove userID from tgChatIDs: %w", err)
@@ -142,7 +142,7 @@ func (r *ORMRepository) removeUserIDFromTgChatIDs(tx pgx.Tx, subIDs []int64, use
 }
 
 // Helper function to delete user preferences.
-func (r *ORMRepository) deleteUserPreferences(tx pgx.Tx, userID int64) error {
+func (r *ORMRepository) deleteUserPreferences(ctx context.Context, tx pgx.Tx, userID int64) error {
 	deleteQuery := squirrel.Delete("users_preferences").
 		Where(squirrel.Eq{"userID": userID}).
 		PlaceholderFormat(squirrel.Dollar)
@@ -153,7 +153,7 @@ func (r *ORMRepository) deleteUserPreferences(tx pgx.Tx, userID int64) error {
 		return fmt.Errorf("failed to build delete query: %w", err)
 	}
 
-	_, err = tx.Exec(context.Background(), sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		r.logger.Error("failed to delete user preferences", "error", err)
 		return fmt.Errorf("failed to delete user preferences: %w", err)
@@ -164,32 +164,34 @@ func (r *ORMRepository) deleteUserPreferences(tx pgx.Tx, userID int64) error {
 
 // AddSubscription adds a new subscription for a user.
 //
-//nolint:dupl //SQL and ORM repository has the same logic, but in specification we must create the same modules
-func (r *ORMRepository) AddSubscription(userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error {
-	tx, err := r.db.Begin(context.Background())
+
+func (r *ORMRepository) AddSubscription(ctx context.Context, userID int64, sub *domain.Subscription,
+	subPreferences domain.UserPreferences,
+) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
 	defer func() {
-		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
+		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
 			r.logger.Error("failed to rollback", "error", rollbackErr)
 		}
 	}()
 
 	// Step 1: Check if a subscription with the same URL exists
-	subID, err := r.findOrCreateSubscription(tx, sub, userID)
+	subID, err := r.findOrCreateSubscription(ctx, tx, sub, userID)
 	if err != nil {
 		return err
 	}
 
 	// Step 2: Insert or update user preferences
-	if err := r.upsertUserPreferences(tx, userID, subID, subPreferences); err != nil {
+	if err := r.upsertUserPreferences(ctx, tx, userID, subID, subPreferences); err != nil {
 		return err
 	}
 
 	// Commit the transaction
-	if err := tx.Commit(context.Background()); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		r.logger.Error("failed to commit transaction", "error", err)
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
@@ -198,7 +200,7 @@ func (r *ORMRepository) AddSubscription(userID int64, sub *domain.Subscription, 
 }
 
 // Helper function to find or create a subscription.
-func (r *ORMRepository) findOrCreateSubscription(tx pgx.Tx, sub *domain.Subscription, userID int64) (int64, error) {
+func (r *ORMRepository) findOrCreateSubscription(ctx context.Context, tx pgx.Tx, sub *domain.Subscription, userID int64) (int64, error) {
 	query := squirrel.Select("subID").
 		From("subscriptions").
 		Where(squirrel.Eq{"url": sub.URL}).
@@ -211,7 +213,7 @@ func (r *ORMRepository) findOrCreateSubscription(tx pgx.Tx, sub *domain.Subscrip
 	}
 
 	var subID int64
-	err = tx.QueryRow(context.Background(), sql, args...).Scan(&subID)
+	err = tx.QueryRow(ctx, sql, args...).Scan(&subID)
 
 	switch {
 	case err == pgx.ErrNoRows:
@@ -235,7 +237,7 @@ func (r *ORMRepository) findOrCreateSubscription(tx pgx.Tx, sub *domain.Subscrip
 			return 0, fmt.Errorf("failed to build insert query: %w", err)
 		}
 
-		_, err = tx.Exec(context.Background(), sql, args...)
+		_, err = tx.Exec(ctx, sql, args...)
 		if err != nil {
 			r.logger.Error("failed to insert new subscription", "error", err)
 			return 0, fmt.Errorf("failed to insert new subscription: %w", err)
@@ -259,7 +261,7 @@ func (r *ORMRepository) findOrCreateSubscription(tx pgx.Tx, sub *domain.Subscrip
 			return 0, fmt.Errorf("failed to build update query: %w", err)
 		}
 
-		_, err = tx.Exec(context.Background(), sql, args...)
+		_, err = tx.Exec(ctx, sql, args...)
 		if err != nil {
 			r.logger.Error("failed to update subscription tgChatIDs", "error", err)
 			return 0, fmt.Errorf("failed to update subscription tgChatIDs: %w", err)
@@ -270,7 +272,9 @@ func (r *ORMRepository) findOrCreateSubscription(tx pgx.Tx, sub *domain.Subscrip
 }
 
 // Helper function to insert or update user preferences.
-func (r *ORMRepository) upsertUserPreferences(tx pgx.Tx, userID, subID int64, subPreferences domain.UserPreferences) error {
+func (r *ORMRepository) upsertUserPreferences(ctx context.Context, tx pgx.Tx, userID, subID int64,
+	subPreferences domain.UserPreferences,
+) error {
 	prefQuery := squirrel.Insert("users_preferences").
 		Columns("userID", "subID", "filters", "tags", "url").
 		Values(userID, subID, pkg.ConvertToArray(subPreferences.Filters), subPreferences.Tags, subPreferences.URL).
@@ -283,7 +287,7 @@ func (r *ORMRepository) upsertUserPreferences(tx pgx.Tx, userID, subID int64, su
 		return fmt.Errorf("failed to build preferences query: %w", err)
 	}
 
-	_, err = tx.Exec(context.Background(), sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		r.logger.Error("failed to add user preferences", "error", err)
 		return fmt.Errorf("failed to add user preferences: %w", err)
@@ -293,36 +297,36 @@ func (r *ORMRepository) upsertUserPreferences(tx pgx.Tx, userID, subID int64, su
 }
 
 // RemoveSubscription removes a subscription for a user.
-func (r *ORMRepository) RemoveSubscription(userID int64, link string) error {
-	tx, err := r.db.Begin(context.Background())
+func (r *ORMRepository) RemoveSubscription(ctx context.Context, userID int64, link string) error {
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
 	defer func() {
-		if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
+		if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
 			r.logger.Error("failed to rollback", "error", rollbackErr)
 		}
 	}()
 
 	// Step 1: Find subscription ID by URL
-	subID, err := r.findSubscriptionIDByURL(tx, link)
+	subID, err := r.findSubscriptionIDByURL(ctx, tx, link)
 	if err != nil {
 		return err
 	}
 
 	// Step 2: Remove user from subscription's tgChatIDs
-	if err := r.removeUserFromTgChatIDs(tx, subID, userID); err != nil {
+	if err := r.removeUserFromTgChatIDs(ctx, tx, subID, userID); err != nil {
 		return err
 	}
 
 	// Step 3: Remove user preferences
-	if err := r.deleteUserPreferencesForSub(tx, userID, subID); err != nil {
+	if err := r.deleteUserPreferencesForSub(ctx, tx, userID, subID); err != nil {
 		return err
 	}
 
 	// Commit the transaction
-	if err := tx.Commit(context.Background()); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		r.logger.Error("failed to commit transaction", "error", err)
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
@@ -331,7 +335,7 @@ func (r *ORMRepository) RemoveSubscription(userID int64, link string) error {
 }
 
 // Helper function to find subscription ID by URL.
-func (r *ORMRepository) findSubscriptionIDByURL(tx pgx.Tx, link string) (int64, error) {
+func (r *ORMRepository) findSubscriptionIDByURL(ctx context.Context, tx pgx.Tx, link string) (int64, error) {
 	query := squirrel.Select("subID").
 		From("subscriptions").
 		Where(squirrel.Eq{"url": link}).
@@ -345,7 +349,7 @@ func (r *ORMRepository) findSubscriptionIDByURL(tx pgx.Tx, link string) (int64, 
 
 	var subID int64
 
-	err = tx.QueryRow(context.Background(), sql, args...).Scan(&subID)
+	err = tx.QueryRow(ctx, sql, args...).Scan(&subID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, errors.New("subscription not found")
@@ -360,7 +364,7 @@ func (r *ORMRepository) findSubscriptionIDByURL(tx pgx.Tx, link string) (int64, 
 }
 
 // Helper function to remove a user from tgChatIDs for a subscription.
-func (r *ORMRepository) removeUserFromTgChatIDs(tx pgx.Tx, subID, userID int64) error {
+func (r *ORMRepository) removeUserFromTgChatIDs(ctx context.Context, tx pgx.Tx, subID, userID int64) error {
 	updateQuery := squirrel.Update("subscriptions").
 		Set("tgChatIDs", squirrel.Expr("array_remove(tgChatIDs, ?)", userID)).
 		Where(squirrel.Eq{"subID": subID}).
@@ -372,7 +376,7 @@ func (r *ORMRepository) removeUserFromTgChatIDs(tx pgx.Tx, subID, userID int64) 
 		return fmt.Errorf("failed to build update query: %w", err)
 	}
 
-	_, err = tx.Exec(context.Background(), sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		r.logger.Error("failed to remove user from subscription", "error", err)
 		return fmt.Errorf("failed to remove user from subscription: %w", err)
@@ -382,7 +386,7 @@ func (r *ORMRepository) removeUserFromTgChatIDs(tx pgx.Tx, subID, userID int64) 
 }
 
 // Helper function to delete user preferences for a subscription.
-func (r *ORMRepository) deleteUserPreferencesForSub(tx pgx.Tx, userID, subID int64) error {
+func (r *ORMRepository) deleteUserPreferencesForSub(ctx context.Context, tx pgx.Tx, userID, subID int64) error {
 	deleteQuery := squirrel.Delete("users_preferences").
 		Where(squirrel.Eq{"userID": userID, "subID": subID}).
 		PlaceholderFormat(squirrel.Dollar)
@@ -393,7 +397,7 @@ func (r *ORMRepository) deleteUserPreferencesForSub(tx pgx.Tx, userID, subID int
 		return fmt.Errorf("failed to build delete query: %w", err)
 	}
 
-	_, err = tx.Exec(context.Background(), sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		r.logger.Error("failed to remove user preferences", "error", err)
 		return fmt.Errorf("failed to remove user preferences: %w", err)
@@ -403,7 +407,7 @@ func (r *ORMRepository) deleteUserPreferencesForSub(tx pgx.Tx, userID, subID int
 }
 
 // GetSubscriptionsForUser retrieves all subscriptions for a user.
-func (r *ORMRepository) GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error) {
+func (r *ORMRepository) GetSubscriptionsForUser(ctx context.Context, tgChatID int64) ([]*domain.UserPreferences, error) {
 	query := squirrel.Select("subID", "filters", "tags", "url").
 		From("users_preferences").
 		Where(squirrel.Eq{"userID": tgChatID}).
@@ -415,14 +419,14 @@ func (r *ORMRepository) GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPr
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
 
-	rows, err := r.db.Query(context.Background(), sql, args...)
+	rows, err := r.db.Query(ctx, sql, args...)
 	if err != nil {
 		r.logger.Error("failed to get subscriptions for user", "error", err)
 		return nil, fmt.Errorf("failed to get subscriptions for user: %w", err)
 	}
 	defer rows.Close()
 
-	var result []domain.UserPreferences
+	var result []*domain.UserPreferences
 
 	for rows.Next() {
 		var prefs domain.UserPreferences
@@ -434,7 +438,7 @@ func (r *ORMRepository) GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPr
 		}
 
 		prefs.Filters = pkg.ConvertToMap(filters)
-		result = append(result, prefs)
+		result = append(result, &prefs)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -446,7 +450,7 @@ func (r *ORMRepository) GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPr
 }
 
 // GetSubscription retrieves a subscription by ID.
-func (r *ORMRepository) GetSubscription(subID int64) (domain.Subscription, error) {
+func (r *ORMRepository) GetSubscription(ctx context.Context, subID int64) (*domain.Subscription, error) {
 	query := squirrel.Select("subID", "url", "tgChatIDs", "lastActivity").
 		From("subscriptions").
 		Where(squirrel.Eq{"subID": subID}).
@@ -455,35 +459,35 @@ func (r *ORMRepository) GetSubscription(subID int64) (domain.Subscription, error
 	sql, args, err := query.ToSql()
 	if err != nil {
 		r.logger.Error("failed to build query", "error", err)
-		return domain.Subscription{}, fmt.Errorf("failed to build query: %w", err)
+		return &domain.Subscription{}, fmt.Errorf("failed to build query: %w", err)
 	}
 
-	row := r.db.QueryRow(context.Background(), sql, args...)
+	row := r.db.QueryRow(ctx, sql, args...)
 
 	var sub domain.Subscription
 
 	var lastActivityJSON []byte
 	if err := row.Scan(&sub.ID, &sub.URL, &sub.TgChatIDs, &lastActivityJSON); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.Subscription{}, errors.New("subscription not found")
+			return &domain.Subscription{}, errors.New("subscription not found")
 		}
 
 		r.logger.Error("failed to get subscription", "error", err)
 
-		return domain.Subscription{}, fmt.Errorf("failed to get subscription: %w", err)
+		return &domain.Subscription{}, fmt.Errorf("failed to get subscription: %w", err)
 	}
 
 	// Deserialize lastActivity JSON
 	if err := json.Unmarshal(lastActivityJSON, &sub.LastActivity); err != nil {
 		r.logger.Error("failed to deserialize lastActivity", "error", err)
-		return domain.Subscription{}, fmt.Errorf("failed to deserialize lastActivity: %w", err)
+		return &domain.Subscription{}, fmt.Errorf("failed to deserialize lastActivity: %w", err)
 	}
 
-	return sub, nil
+	return &sub, nil
 }
 
 // UpdateSubscription updates a subscription.
-func (r *ORMRepository) UpdateSubscription(subID int64, newSub *domain.Subscription) error {
+func (r *ORMRepository) UpdateSubscription(ctx context.Context, subID int64, newSub *domain.Subscription) error {
 	query := squirrel.Update("subscriptions").
 		Set("url", newSub.URL).
 		Set("tgChatIDs", newSub.TgChatIDs).
@@ -506,7 +510,7 @@ func (r *ORMRepository) UpdateSubscription(subID int64, newSub *domain.Subscript
 
 	args[len(args)-1] = lastActivityJSON // Replace the placeholder with the serialized JSON
 
-	_, err = r.db.Exec(context.Background(), sql, args...)
+	_, err = r.db.Exec(ctx, sql, args...)
 	if err != nil {
 		r.logger.Error("failed to update subscription", "error", err)
 		return fmt.Errorf("failed to update subscription: %w", err)
@@ -516,7 +520,7 @@ func (r *ORMRepository) UpdateSubscription(subID int64, newSub *domain.Subscript
 }
 
 // UpdateSubscriptionActivity updates the activity of a subscription.
-func (r *ORMRepository) UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error {
+func (r *ORMRepository) UpdateSubscriptionActivity(ctx context.Context, subID int64, newActivity domain.Activity) error {
 	query := squirrel.Update("subscriptions").
 		Set("lastActivity", squirrel.Expr("?::JSONB", newActivity)).
 		Where(squirrel.Eq{"subID": subID}).
@@ -536,7 +540,7 @@ func (r *ORMRepository) UpdateSubscriptionActivity(subID int64, newActivity doma
 
 	args[len(args)-1] = activityJSON // Replace the placeholder with the serialized JSON
 
-	_, err = r.db.Exec(context.Background(), sql, args...)
+	_, err = r.db.Exec(ctx, sql, args...)
 	if err != nil {
 		r.logger.Error("failed to update subscription activity", "error", err)
 		return fmt.Errorf("failed to update subscription activity: %w", err)
@@ -546,7 +550,7 @@ func (r *ORMRepository) UpdateSubscriptionActivity(subID int64, newActivity doma
 }
 
 // GetSubsID retrieves all subscription IDs.
-func (r *ORMRepository) GetSubsID() domain.Set {
+func (r *ORMRepository) GetSubsID(ctx context.Context) *domain.Set {
 	query := squirrel.Select("subID").
 		From("subscriptions").
 		PlaceholderFormat(squirrel.Dollar)
@@ -557,7 +561,7 @@ func (r *ORMRepository) GetSubsID() domain.Set {
 		return nil
 	}
 
-	rows, err := r.db.Query(context.Background(), sql, args...)
+	rows, err := r.db.Query(ctx, sql, args...)
 	if err != nil {
 		r.logger.Error("failed to get subscription IDs", "error", err)
 		return nil
@@ -581,5 +585,5 @@ func (r *ORMRepository) GetSubsID() domain.Set {
 		return nil
 	}
 
-	return result
+	return &result
 }

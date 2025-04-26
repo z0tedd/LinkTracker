@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,15 +13,15 @@ import (
 )
 
 type Repository interface {
-	RegisterUser(userID int64) error
-	DeleteUser(userID int64) error
-	AddSubscription(userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error
-	RemoveSubscription(userID int64, link string) error
-	GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error)
-	GetSubscription(subID int64) (domain.Subscription, error)
-	UpdateSubscription(subID int64, newSub *domain.Subscription) error
-	UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error
-	GetSubsID() domain.Set
+	RegisterUser(ctx context.Context, userID int64) error
+	DeleteUser(ctx context.Context, userID int64) error
+	AddSubscription(ctx context.Context, userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error
+	RemoveSubscription(ctx context.Context, userID int64, link string) error
+	GetSubscriptionsForUser(ctx context.Context, tgChatID int64) ([]*domain.UserPreferences, error)
+	GetSubscription(ctx context.Context, subID int64) (*domain.Subscription, error)
+	UpdateSubscription(ctx context.Context, subID int64, newSub *domain.Subscription) error
+	UpdateSubscriptionActivity(ctx context.Context, subID int64, newActivity domain.Activity) error
+	GetSubsID(ctx context.Context) *domain.Set
 }
 
 // InMemoryRepository implements the Repository interface using an in-memory storage.
@@ -46,7 +47,7 @@ func NewInMemoryRepository(logger *slog.Logger) *InMemoryRepository {
 }
 
 // RegisterUser registers a new user.
-func (r *InMemoryRepository) RegisterUser(userID int64) error {
+func (r *InMemoryRepository) RegisterUser(_ context.Context, userID int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -61,7 +62,7 @@ func (r *InMemoryRepository) RegisterUser(userID int64) error {
 }
 
 // DeleteUser deletes a user and removes their preferences.
-func (r *InMemoryRepository) DeleteUser(userID int64) error {
+func (r *InMemoryRepository) DeleteUser(ctx context.Context, userID int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -70,7 +71,7 @@ func (r *InMemoryRepository) DeleteUser(userID int64) error {
 	}
 
 	for subID := range r.userPreferencesByTgChatID[userID] {
-		if err := r.removeUserFromSubscription(userID, subID); err != nil {
+		if err := r.removeUserFromSubscription(ctx, userID, subID); err != nil {
 			return fmt.Errorf("failed to remove user from subscription: %w", err)
 		}
 	}
@@ -82,11 +83,13 @@ func (r *InMemoryRepository) DeleteUser(userID int64) error {
 }
 
 // Ищем подписку по ссылке, нет? => создаем, иначе просто апдейтим, и в отдельную мапу(таблицу) кидаем преференсы.
-func (r *InMemoryRepository) AddSubscription(userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error {
+func (r *InMemoryRepository) AddSubscription(ctx context.Context, userID int64, sub *domain.Subscription,
+	subPreferences domain.UserPreferences,
+) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	subID, err := r.findSubByLink(sub.URL)
+	subID, err := r.findSubByLink(ctx, sub.URL)
 	if err != nil {
 		subID = r.createNewID()
 		sub.ID = subID
@@ -94,7 +97,7 @@ func (r *InMemoryRepository) AddSubscription(userID int64, sub *domain.Subscript
 		r.subscriptions.Add(subID)
 	}
 
-	if err := r.updateSubscriptionUsers(subID, userID); err != nil {
+	if err := r.updateSubscriptionUsers(ctx, subID, userID); err != nil {
 		return fmt.Errorf("failed to update subscription users: %w", err)
 	}
 
@@ -108,16 +111,16 @@ func (r *InMemoryRepository) AddSubscription(userID int64, sub *domain.Subscript
 }
 
 // RemoveSubscription removes a subscription for a user.
-func (r *InMemoryRepository) RemoveSubscription(userID int64, link string) error {
+func (r *InMemoryRepository) RemoveSubscription(ctx context.Context, userID int64, link string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	subID, err := r.findSubByLink(link)
+	subID, err := r.findSubByLink(ctx, link)
 	if err != nil {
 		return fmt.Errorf("subscription not found: %w", err)
 	}
 
-	if err := r.removeUserFromSubscription(userID, subID); err != nil {
+	if err := r.removeUserFromSubscription(ctx, userID, subID); err != nil {
 		return fmt.Errorf("failed to remove user from subscription: %w", err)
 	}
 
@@ -127,7 +130,7 @@ func (r *InMemoryRepository) RemoveSubscription(userID int64, link string) error
 }
 
 // GetSubscriptionsForUser retrieves all subscriptions for a user.
-func (r *InMemoryRepository) GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error) {
+func (r *InMemoryRepository) GetSubscriptionsForUser(_ context.Context, tgChatID int64) ([]*domain.UserPreferences, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -136,29 +139,29 @@ func (r *InMemoryRepository) GetSubscriptionsForUser(tgChatID int64) ([]domain.U
 		return nil, errors.New("no subscriptions found for the user")
 	}
 
-	result := make([]domain.UserPreferences, 0, len(userSubs))
+	result := make([]*domain.UserPreferences, 0, len(userSubs))
 	for _, sub := range userSubs {
-		result = append(result, sub)
+		result = append(result, &sub)
 	}
 
 	return result, nil
 }
 
 // GetSubscription retrieves a subscription by ID.
-func (r *InMemoryRepository) GetSubscription(subID int64) (domain.Subscription, error) {
+func (r *InMemoryRepository) GetSubscription(_ context.Context, subID int64) (*domain.Subscription, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	sub, exists := r.subsByID[subID]
 	if !exists {
-		return domain.Subscription{}, errors.New("subscription not found")
+		return &domain.Subscription{}, errors.New("subscription not found")
 	}
 
-	return sub, nil
+	return &sub, nil
 }
 
 // UpdateSubscription updates a subscription.
-func (r *InMemoryRepository) UpdateSubscription(subID int64, newSub *domain.Subscription) error {
+func (r *InMemoryRepository) UpdateSubscription(_ context.Context, subID int64, newSub *domain.Subscription) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -172,7 +175,7 @@ func (r *InMemoryRepository) UpdateSubscription(subID int64, newSub *domain.Subs
 }
 
 // UpdateSubscriptionActivity updates the activity of a subscription.
-func (r *InMemoryRepository) UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error {
+func (r *InMemoryRepository) UpdateSubscriptionActivity(_ context.Context, subID int64, newActivity domain.Activity) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -188,7 +191,7 @@ func (r *InMemoryRepository) UpdateSubscriptionActivity(subID int64, newActivity
 }
 
 // GetSubsID retrieves all subscription IDs.
-func (r *InMemoryRepository) GetSubsID() domain.Set {
+func (r *InMemoryRepository) GetSubsID(_ context.Context) *domain.Set {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -197,12 +200,12 @@ func (r *InMemoryRepository) GetSubsID() domain.Set {
 		result.Add(id)
 	}
 
-	return result
+	return &result
 }
 
 // Helper Functions
 
-func (r *InMemoryRepository) findSubByLink(link string) (int64, error) {
+func (r *InMemoryRepository) findSubByLink(_ context.Context, link string) (int64, error) {
 	for subID, subInfo := range r.subsByID {
 		if subInfo.URL == link {
 			return subID, nil
@@ -217,7 +220,7 @@ func (r *InMemoryRepository) createNewID() int64 {
 }
 
 // updateSubscriptionUsers просто добавляет в конец подписки ID пользователя и обновляет репозиторий.
-func (r *InMemoryRepository) updateSubscriptionUsers(subID, userID int64) error {
+func (r *InMemoryRepository) updateSubscriptionUsers(_ context.Context, subID, userID int64) error {
 	sub, exists := r.subsByID[subID]
 	if !exists {
 		return errors.New("subscription not found")
@@ -233,7 +236,7 @@ func (r *InMemoryRepository) updateSubscriptionUsers(subID, userID int64) error 
 	return nil
 }
 
-func (r *InMemoryRepository) removeUserFromSubscription(userID, subID int64) error {
+func (r *InMemoryRepository) removeUserFromSubscription(_ context.Context, userID, subID int64) error {
 	sub, exists := r.subsByID[subID]
 	if !exists {
 		return errors.New("subscription not found")

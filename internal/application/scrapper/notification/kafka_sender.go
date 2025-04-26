@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/IBM/sarama"
+
 	"github.com/central-university-dev/go-z0tedd/internal/application/dtos"
 	"github.com/central-university-dev/go-z0tedd/internal/config"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"

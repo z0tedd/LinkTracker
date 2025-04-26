@@ -42,7 +42,7 @@ func main() {
 		return
 	}
 
-	go bot.Run()
+	go bot.Run(ctx)
 
 	switch cfg.MessageTransportType {
 	case "http":

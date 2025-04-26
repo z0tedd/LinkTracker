@@ -25,6 +25,8 @@ func main() {
 
 	cfg := &config.Config{}
 
+	ctx := context.Background()
+
 	// typesafe config
 	err := env.Parse(cfg)
 	if err != nil {
@@ -34,7 +36,7 @@ func main() {
 
 	repoFactory := repository.NewCreator(logger, cfg)
 
-	repo, err := repoFactory.Create()
+	repo, err := repoFactory.Create(ctx)
 	if err != nil {
 		logger.Error("creating repository", "error", err)
 		return
@@ -59,8 +61,6 @@ func main() {
 		logger.Error("Scheduler startup", slog.Any("error", err.Error()))
 		return
 	}
-
-	ctx := context.Background()
 
 	defer func() {
 		err := scheduler.Shutdown()

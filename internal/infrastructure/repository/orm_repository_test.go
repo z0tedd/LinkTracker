@@ -135,7 +135,9 @@ func TestRegisterUser(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	repo := repository.NewORMRepository(pool, logger)
 
-	err := repo.RegisterUser(12345)
+	ctx := context.Background()
+
+	err := repo.RegisterUser(ctx, 12345)
 	if err != nil {
 		t.Fatalf("RegisterUser failed: %v", err)
 	}
@@ -160,7 +162,7 @@ func TestDeleteUser(t *testing.T) {
 	}
 
 	// Call DeleteUser
-	err = repo.DeleteUser(12345)
+	err = repo.DeleteUser(ctx, 12345)
 	if err != nil {
 		t.Fatalf("DeleteUser failed: %v", err)
 	}
@@ -199,7 +201,9 @@ func TestAddSubscription(t *testing.T) {
 		URL:     "http://example.com",
 	}
 
-	err := repo.AddSubscription(12345, &sub, prefs)
+	ctx := context.Background()
+
+	err := repo.AddSubscription(ctx, 12345, &sub, prefs)
 	if err != nil {
 		t.Fatalf("AddSubscription failed: %v", err)
 	}

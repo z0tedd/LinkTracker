@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -13,25 +14,25 @@ import (
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
 )
 
-type Repository interface {
-	RegisterUser(userID int64) error
-	DeleteUser(userID int64) error
-	AddSubscription(userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error
-	RemoveSubscription(userID int64, link string) error
-	GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error)
+type UserRepository interface {
+	RegisterUser(ctx context.Context, userID int64) error
+	DeleteUser(ctx context.Context, userID int64) error
+	AddSubscription(ctx context.Context, userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error
+	RemoveSubscription(ctx context.Context, userID int64, link string) error
+	GetSubscriptionsForUser(ctx context.Context, tgChatID int64) ([]*domain.UserPreferences, error)
 }
 
 type HTTPScrapperServer struct {
-	repo   Repository
+	repo   UserRepository
 	logger *slog.Logger
 }
 
-func NewHTTPScrapperServer(repo Repository, logger *slog.Logger) *HTTPScrapperServer {
+func NewHTTPScrapperServer(repo UserRepository, logger *slog.Logger) *HTTPScrapperServer {
 	return &HTTPScrapperServer{repo: repo, logger: logger}
 }
 
 func (s *HTTPScrapperServer) DeleteLinks(ctx echo.Context, params server.DeleteLinksParams) error {
-	err := s.repo.RemoveSubscription(params.TgChatId, params.Link)
+	err := s.repo.RemoveSubscription(ctx.Request().Context(), params.TgChatId, params.Link)
 	if err != nil {
 		s.logger.Error("Failed to delete subscription",
 			"tg_chat_id", params.TgChatId,
@@ -49,7 +50,7 @@ func (s *HTTPScrapperServer) DeleteLinks(ctx echo.Context, params server.DeleteL
 }
 
 func (s *HTTPScrapperServer) GetLinks(ctx echo.Context, params server.GetLinksParams) error {
-	subscriptions, err := s.repo.GetSubscriptionsForUser(params.TgChatId)
+	subscriptions, err := s.repo.GetSubscriptionsForUser(ctx.Request().Context(), params.TgChatId)
 	if err != nil {
 		s.logger.Error("Failed to retrieve subscriptions",
 			"tg_chat_id", params.TgChatId,
@@ -99,7 +100,7 @@ func (s *HTTPScrapperServer) PostLinks(ctx echo.Context, params server.PostLinks
 		URL:     *requestBody.Link,
 	}
 
-	err := s.repo.AddSubscription(params.TgChatId, &sub, subPreferences)
+	err := s.repo.AddSubscription(ctx.Request().Context(), params.TgChatId, &sub, subPreferences)
 	if err != nil {
 		s.logger.Error("Failed to add subscription to repository",
 			"tg_chat_id", params.TgChatId,
@@ -118,7 +119,7 @@ func (s *HTTPScrapperServer) PostLinks(ctx echo.Context, params server.PostLinks
 
 // //nolint:revive,stylecheck // implementation of generated interface.
 func (s *HTTPScrapperServer) DeleteTgChatId(ctx echo.Context, id int64) error {
-	err := s.repo.DeleteUser(id)
+	err := s.repo.DeleteUser(ctx.Request().Context(), id)
 	if err != nil {
 		s.logger.Error("Failed to delete user",
 			"tg_chat_id", id,
@@ -136,7 +137,7 @@ func (s *HTTPScrapperServer) DeleteTgChatId(ctx echo.Context, id int64) error {
 
 // //nolint:revive,stylecheck // implementation of generated interface.
 func (s *HTTPScrapperServer) PostTgChatId(ctx echo.Context, id int64) error {
-	err := s.repo.RegisterUser(id)
+	err := s.repo.RegisterUser(ctx.Request().Context(), id)
 	if err != nil {
 		s.logger.Error("Failed to register user",
 			"tg_chat_id", id,
@@ -155,7 +156,7 @@ func (s *HTTPScrapperServer) PostTgChatId(ctx echo.Context, id int64) error {
 // Helper functions remain unchanged...
 
 // Helper function to convert []*Subscription to []*LinkResponse.
-func convertToLinkResponse(subscriptions []domain.UserPreferences) *[]server.LinkResponse {
+func convertToLinkResponse(subscriptions []*domain.UserPreferences) *[]server.LinkResponse {
 	links := make([]server.LinkResponse, len(subscriptions))
 	for i, sub := range subscriptions {
 		links[i] = server.LinkResponse{
