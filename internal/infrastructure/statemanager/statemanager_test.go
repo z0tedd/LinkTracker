@@ -46,7 +46,7 @@ func TestSetAndGetData(t *testing.T) {
 	intKey := "int_key"
 	intValue := 42
 	manager.SetData(chatID, intKey, intValue)
-	assert.Equal(t, intValue, manager.GetData(chatID, intKey), "Integer value mismatch")
+	assert.Equal(t, float64(intValue), manager.GetData(chatID, intKey), "Integer value mismatch")
 
 	// Test non-existent key
 	assert.Nil(t, manager.GetData(chatID, "invalid_key"), "Expected nil for non-existent key")

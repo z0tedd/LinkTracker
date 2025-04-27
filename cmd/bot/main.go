@@ -51,7 +51,9 @@ func main() {
 		botServer := server.NewHTTPBotServer(botAPI, logger)
 
 		unimplemented_server.RegisterHandlers(e, botServer)
-		e.Logger.Fatal(e.Start(":8081"))
+
+		go e.Logger.Fatal(e.Start(":8081"))
+
 	case "kafka":
 		kafkaConfig := sarama.NewConfig()
 
@@ -67,6 +69,6 @@ func main() {
 			return
 		}
 
-		logger.Error("exiting app", slog.Any("error", botServer.Start(ctx)))
+		go logger.Error("exiting app", slog.Any("error", botServer.Start(ctx)))
 	}
 }

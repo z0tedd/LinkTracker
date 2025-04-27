@@ -1,4 +1,21 @@
 COVERAGE_FILE ?= coverage.out
+.PHONY: run 
+run: run_bot run_scrapper run_docker
+
+.PHONY: run_bot 
+run_bot:
+	@echo "Выполняется go run для таргета bot"
+	@go run ./cmd/bot/main.go
+
+.PHONY: run_scrapper 
+run_scrapper:
+	@echo "Выполняется go run для таргета scrapper"
+	@go run ./cmd/scrapper/main.go
+	
+.PHONY: run_docker 
+run_docker:
+	@echo "Выполняется поднятие контейнеров в одиночку"
+	@docker compose up 
 
 .PHONY: build
 build: build_bot build_scrapper

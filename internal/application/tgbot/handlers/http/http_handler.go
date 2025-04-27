@@ -187,7 +187,13 @@ func (h *HTTPHandler) handleWaitingForFilters(ctx context.Context, userID int64,
 
 	params := client.PostLinksParams{TgChatId: userID}
 	link := h.states.GetData(userID, "subscription_link").(string)
-	tags := h.states.GetData(userID, "subscription_tags").([]string)
+	rawTags := h.states.GetData(userID, "subscription_tags").([]any)
+	tags := make([]string, len(rawTags))
+
+	for i, v := range rawTags {
+		tags[i] = v.(string)
+	}
+
 	body := client.PostLinksJSONRequestBody{
 		Filters: &filters,
 		Link:    &link,

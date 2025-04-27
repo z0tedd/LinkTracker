@@ -6,9 +6,11 @@ type Config struct {
 	DBURL                string `env:"DB_URL" envDefault:"jdbc:postgresql://postgres_container:5432/postgres_db"` // SQL or ORM
 	Crontab              string `env:"CRON" envDefault:"0/10 * * * *"`
 	MessageTransportType string `env:"MESSAGE_TRANSPORT_TYPE" envDefault:"http"`
+	StateManagerType     string `env:"STATE_MANAGER_TYPE" envDefault:"Redis"`
 	KafkaAddresses       string `env:"KAFKA_ADDRESSES" envDefault:"localhost:9092"`
 	BotBaseURL           string `env:"BOT_BASE_URL" envDefault:"http://localhost:8081"`
 	ScrapperGroupID      string `env:"SCRAPPER_GROUP_ID" envDefault:"scrapper_consumer"`
+	ScrapperHTTPAddress  string `env:"SCRAPPER_HTTP_ADDRESS" envDefault:"http://localhost:8080"`
 	BotGroupID           string `env:"BOT_GROUP_ID" envDefault:"bot_consumer"`
 	KafkaTopic           string `env:"KAFKA_TOPIC" envDefault:"messages"`
 	RedisURL             string `env:"REDIS_URL"`

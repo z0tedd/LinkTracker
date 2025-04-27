@@ -46,9 +46,12 @@ func (b *TrackingBot) Run(ctx context.Context) {
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 60
 
-	states := statemanager.NewInMemoryStateManager()
+	states, err := statemanager.New(b.logger, b.cfg)
+	if err != nil {
+		b.logger.Warn("running bot", slog.Any("error", err.Error()))
+	}
 
-	clientScrapper, err := client.NewClient("http://localhost:8080") // TODO: mv to config
+	clientScrapper, err := client.NewClient(b.cfg.ScrapperHTTPAddress)
 	if err != nil {
 		b.logger.Warn("Scrapper client", slog.Any("error", err.Error()))
 	}

@@ -106,10 +106,14 @@ func TestGetSubscriptionsForUser(t *testing.T) {
 	_ = repo.AddSubscription(ctx, userID, &sub2, subPrefs2)
 
 	subs, err := repo.GetSubscriptionsForUser(ctx, userID)
+	resultSubs := make([]domain.UserPreferences, len(subs))
+	for i, v := range subs {
+		resultSubs[i] = *v
+	}
 	assert.NoError(t, err)
 	assert.Len(t, subs, 2)
-	assert.Contains(t, subs, subPrefs1)
-	assert.Contains(t, subs, subPrefs2)
+	assert.Contains(t, resultSubs, subPrefs1)
+	assert.Contains(t, resultSubs, subPrefs2)
 
 	// Non-existing user
 	_, err = repo.GetSubscriptionsForUser(ctx, 999)
