@@ -34,3 +34,13 @@ type PostUpdatesError struct {
 func (e PostUpdatesError) Error() string {
 	return fmt.Sprintf("post updates: %s", e.Msg)
 }
+
+// github_client.go.
+type ClientError struct {
+	Code    int
+	Message string
+}
+
+func (e ClientError) Error() string {
+	return fmt.Sprintf("Github API error: %d - %s", e.Code, e.Message)
+}

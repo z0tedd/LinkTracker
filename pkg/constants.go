@@ -4,6 +4,7 @@ type (
 	AvailableHosts   = string
 	TransportType    = string
 	StateManagerType = string
+	SiteAddress      = string
 )
 
 const (
@@ -14,4 +15,6 @@ const (
 	TransportTypeKafka   TransportType    = "kafka"
 	RedisStateManager    StateManagerType = "Redis"
 	InMemoryStateManager StateManagerType = "In-memory"
+	StackOverflowAddress SiteAddress      = "https://api.stackexchange.com/2.3"
+	GithubAddress        SiteAddress      = "https://api.github.com"
 )

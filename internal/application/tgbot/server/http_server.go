@@ -39,7 +39,8 @@ func (b HTTPBotServer) PostUpdates(ctx echo.Context) error {
 	}
 
 	for _, v := range *requestBody.TgChatIds {
-		err := helpers.SendMessage(b.tgAPI, v, fmt.Sprintf("New update from your subcribed link: %s", *requestBody.Url))
+		err := helpers.SendMessage(b.tgAPI, v, fmt.Sprintf("New update from your subcribed link: %s\n Description: %s",
+			*requestBody.Url, *requestBody.Description))
 		if err != nil {
 			b.logger.Error("Sending message", slog.Any("error", err.Error()))
 		}

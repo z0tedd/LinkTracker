@@ -8,37 +8,28 @@ import (
 	"regexp"
 	"strings"
 
-	stackOverflowAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/stackoverflow"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
-	"github.com/central-university-dev/go-z0tedd/pkg"
 )
+
+type StackOverflowClientInterface interface {
+	GetQuestionsByIDs(ctx context.Context, questionID string) (*domain.StackOverflowQuestion, error)
+	GetQuestionAnswers(ctx context.Context, questionID string) (*domain.StackOverflowAnswer, error)
+	GetQuestionComments(ctx context.Context, questionID string) (*domain.StackOverflowComment, error)
+}
 
 type StackOverflowFetcher struct {
 	QuestionID          string
 	sub                 *domain.Subscription
-	stackOverflowClient stackOverflowAPI.ClientWithResponsesInterface
+	stackOverflowClient StackOverflowClientInterface
 	logger              *slog.Logger
 }
 
 func (f *StackOverflowFetcher) GetQuestionComments(ctx context.Context) (domain.Activity, bool) {
-	params := stackOverflowAPI.GetQuestionCommentsParams{
-		Site:   "stackoverflow",
-		Filter: pkg.StringPtr("withbody"),
-		Sort:   (*stackOverflowAPI.GetQuestionCommentsParamsSort)(pkg.StringPtr("creation")),
-	}
-
-	rsp, err := f.stackOverflowClient.GetQuestionCommentsWithResponse(ctx, f.QuestionID, &params)
-	if err != nil || rsp.StatusCode() != 200 || rsp.JSON200 == nil {
-		f.logger.Error("error fetching StackOverflow question comments", "error", err)
+	lastComment, err := f.stackOverflowClient.GetQuestionComments(ctx, f.QuestionID)
+	if err != nil {
+		f.logger.Error("fetching StackOverflow question comment", slog.Any("error", err))
 		return f.sub.LastActivity, false
 	}
-
-	if rsp.JSON200.Items == nil || len(*rsp.JSON200.Items) == 0 {
-		f.logger.Error("no items found in StackOverflow question comments response")
-		return f.sub.LastActivity, false
-	}
-
-	lastComment := (*rsp.JSON200.Items)[0]
 
 	if lastComment.Body == nil || lastComment.Owner == nil || lastComment.CreationDate == nil {
 		f.logger.Error("incomplete data in StackOverflow question comments response")
@@ -61,26 +52,14 @@ func (f *StackOverflowFetcher) GetQuestionComments(ctx context.Context) (domain.
 }
 
 func (f *StackOverflowFetcher) GetQuestionAnswers(ctx context.Context) (domain.Activity, bool) {
-	params := stackOverflowAPI.GetQuestionAnswersParams{
-		Site:   "stackoverflow",
-		Filter: pkg.StringPtr("withbody"),
-	}
-
-	rsp, err := f.stackOverflowClient.GetQuestionAnswersWithResponse(ctx, f.QuestionID, &params)
-	if err != nil || rsp.StatusCode() != 200 || rsp.JSON200 == nil {
-		f.logger.Error("error fetching StackOverflow question comments", "error", err)
+	lastAnswer, err := f.stackOverflowClient.GetQuestionAnswers(ctx, f.QuestionID)
+	if err != nil {
+		f.logger.Error("fetching StackOverflow question comments", slog.Any("error", err))
 		return f.sub.LastActivity, false
 	}
-
-	if rsp.JSON200.Items == nil || len(*rsp.JSON200.Items) == 0 {
-		f.logger.Error("error fetching StackOverflow question comments", "error", err)
-		return f.sub.LastActivity, false
-	}
-
-	lastAnswer := (*rsp.JSON200.Items)[0]
 
 	if lastAnswer.Body == nil || lastAnswer.Owner == nil || lastAnswer.CreationDate == nil {
-		f.logger.Error("error fetching StackOverflow question comments", "error", err)
+		f.logger.Error("error fetching StackOverflow question comments", slog.String("error", "incomplete data"))
 		return f.sub.LastActivity, false
 	}
 
@@ -100,26 +79,13 @@ func (f *StackOverflowFetcher) GetQuestionAnswers(ctx context.Context) (domain.A
 
 func (f *StackOverflowFetcher) GetQuestionsByIDs(ctx context.Context) (domain.Activity, bool) {
 	// Параметры для запроса
-	params := stackOverflowAPI.GetQuestionsByIdsParams{
-		Site: "stackoverflow",
-	}
-
-	// Выполнение запроса к API
-	rsp, err := f.stackOverflowClient.GetQuestionsByIdsWithResponse(ctx, f.QuestionID, &params)
-	if err != nil || rsp.StatusCode() != 200 {
-		f.logger.Error("error fetching StackOverflow question", "error", err)
-		return f.sub.LastActivity, false
-	}
-
-	// Проверка наличия данных в ответе
-	if rsp.JSON200 == nil || rsp.JSON200.Items == nil || len(*rsp.JSON200.Items) == 0 {
-		f.logger.Warn("StackOverflow question not found or invalid response")
-		return f.sub.LastActivity, false
-	}
-
-	// Получение информации о вопросе
 	// questionInfo := rsp.JSON200
-	questionInfo := (*rsp.JSON200.Items)[0]
+	questionInfo, err := f.stackOverflowClient.GetQuestionsByIDs(ctx, f.QuestionID)
+	if err != nil {
+		f.logger.Error("fetching StackOverflow question", slog.Any("error", err))
+		return f.sub.LastActivity, false
+	}
+
 	if questionInfo.LastActivityDate == nil || questionInfo.Title == nil {
 		f.logger.Warn("StackOverflow question not found or invalid response")
 		return f.sub.LastActivity, false
@@ -164,7 +130,9 @@ func (f *StackOverflowFetcher) Fetch(ctx context.Context) (domain.Activity, bool
 	return f.sub.LastActivity, false
 }
 
-func NewStackOverflowFetcher(sub *domain.Subscription, logger *slog.Logger) (*StackOverflowFetcher, error) {
+func NewStackOverflowFetcher(sub *domain.Subscription, logger *slog.Logger,
+	client StackOverflowClientInterface,
+) (*StackOverflowFetcher, error) {
 	parsedURL, err := url.Parse(sub.URL)
 	if err != nil {
 		logger.Error("invalid Stack Overflow URL", "url", sub.URL, "error", err)
@@ -180,11 +148,5 @@ func NewStackOverflowFetcher(sub *domain.Subscription, logger *slog.Logger) (*St
 		return &StackOverflowFetcher{}, fmt.Errorf("invalid Stack Overflow path: %s", path)
 	}
 
-	stackOverflowClient, err := stackOverflowAPI.NewClientWithResponses("https://api.stackexchange.com/2.3")
-	if err != nil {
-		logger.Error("stackoverflow-client startup", slog.Any("error", err.Error()))
-		return &StackOverflowFetcher{}, fmt.Errorf("stackoverflow-client startup: %w", err)
-	}
-
-	return &StackOverflowFetcher{QuestionID: matches[1], sub: sub, logger: logger, stackOverflowClient: stackOverflowClient}, nil
+	return &StackOverflowFetcher{QuestionID: matches[1], sub: sub, logger: logger, stackOverflowClient: client}, nil
 }

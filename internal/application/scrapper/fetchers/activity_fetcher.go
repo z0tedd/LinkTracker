@@ -6,7 +6,11 @@ import (
 	"log/slog"
 	"net/url"
 
+	githubAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/github"
+	stackOverflowAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/stackoverflow"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
+	githubclient "github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/github_client"
+	stackoverflowclient "github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/stackoverflow_client"
 	"github.com/central-university-dev/go-z0tedd/pkg"
 )
 
@@ -48,10 +52,24 @@ func (ff DefaultFetcherFactory) NewFetcherFromSub(sub *domain.Subscription) (Fet
 	hostname := parsedURL.Hostname()
 	switch hostname {
 	case pkg.Stackoverflow:
-		return NewStackOverflowFetcher(sub, ff.logger)
+		codegenClient, err := stackOverflowAPI.NewClientWithResponses(pkg.StackOverflowAddress)
+		if err != nil {
+			return &StackOverflowFetcher{}, fmt.Errorf("github-client startup: %w", err)
+		}
+
+		stackOverflowClient := stackoverflowclient.NewHTTPStackOverflowClient(codegenClient)
+
+		return NewStackOverflowFetcher(sub, ff.logger, stackOverflowClient)
 
 	case pkg.Github:
-		return NewGithubFetcher(sub, ff.logger)
+		codegenClient, err := githubAPI.NewClientWithResponses(pkg.GithubAddress)
+		if err != nil {
+			return nil, fmt.Errorf("github-client startup: %w", err)
+		}
+
+		githubClient := githubclient.NewHTTPGithubClient(codegenClient)
+
+		return NewGithubFetcher(sub, ff.logger, githubClient)
 
 	default:
 		return NewBasicFetcher(ff.logger), fmt.Errorf("not implemented")
