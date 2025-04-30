@@ -7,7 +7,7 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.14.xsd
         http://www.liquibase.org/xml/ns/dbchangelog-ext https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
 
-    <include relativeToChangelogFile="true" file="00-initial-schema.sql"/>
-    <include relativeToChangelogFile="true" file="01-add-foreign-key-to-users-preferences.sql"/>
+    <include relativeToChangelogFile="true" file="01-initial-schema.sql"/>
+    <include relativeToChangelogFile="true" file="02-add-foreign-key-to-users-preferences.sql"/>
 
 </databaseChangeLog>

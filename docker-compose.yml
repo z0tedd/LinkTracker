@@ -55,6 +55,7 @@ services:
       - --username=${POSTGRES_USER} #postgres_user
       - --password=${POSTGRES_PASSWORD} #postgres_password
       # - clear-checksums
+      # - rollbackCount 1
       - update
     volumes:
       - ./migrations:/changesets
