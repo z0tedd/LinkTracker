@@ -1,17 +1,23 @@
--- Создание таблицы users_preferences
-CREATE TABLE users_preferences (
-    userID BIGINT NOT NULL,
-    subID BIGINT NOT NULL,
+-- liquibase formatted sql
+-- changeset z0tedd:00-initial-schema
+
+-- up:
+CREATE TABLE IF NOT EXISTS users_preferences (
+    user_id BIGINT NOT NULL,
+    sub_id BIGINT NOT NULL,
     filters TEXT[] NOT NULL,
     tags TEXT[] NOT NULL,
     url TEXT NOT NULL,
-    PRIMARY KEY (userID, subID) -- Составной первичный ключ для уникальности пары userID и subID
+    PRIMARY KEY (user_id, sub_id)
 );
 
--- Создание таблицы subscriptions
-CREATE TABLE subscriptions (
-    subID BIGINT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS subscriptions (
+    sub_id BIGINT PRIMARY KEY,
     url TEXT NOT NULL,
-    tgChatIDs BIGINT[] NOT NULL,
-    lastActivity JSONB NOT NULL
+    tg_chat_ids BIGINT[] NOT NULL,
+    last_activity JSONB NOT NULL
 );
+
+-- down:
+DROP TABLE IF EXISTS users_preferences;
+DROP TABLE IF EXISTS subscriptions;

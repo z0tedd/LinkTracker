@@ -102,19 +102,19 @@ func applyMigrations(pool *pgxpool.Pool, t *testing.T) error {
 	// Define SQL schema for testing
 	schema := `
     CREATE TABLE IF NOT EXISTS subscriptions (
-        subID BIGINT PRIMARY KEY,
+        sub_id BIGINT PRIMARY KEY,
         url TEXT NOT NULL,
-        tgChatIDs BIGINT[] NOT NULL,
-        lastActivity JSONB NOT NULL
+        tg_chat_ids BIGINT[] NOT NULL,
+        last_activity JSONB NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS users_preferences (
-        userID BIGINT NOT NULL,
-        subID BIGINT NOT NULL,
+        user_id BIGINT NOT NULL,
+        sub_id BIGINT NOT NULL,
         filters TEXT[] NOT NULL,
         tags TEXT[] NOT NULL,
         url TEXT NOT NULL,
-        PRIMARY KEY (userID, subID)
+        PRIMARY KEY (user_id, sub_id)
     );
     `
 
@@ -154,7 +154,7 @@ func TestDeleteUser(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := pool.Exec(ctx, `
-        INSERT INTO users_preferences (userID, subID, filters, tags, url)
+        INSERT INTO users_preferences (user_id, sub_id, filters, tags, url)
         VALUES (12345, 67890, '{"filter1"}', '{"tag1"}', 'http://example.com');
     `)
 	if err != nil {
@@ -170,7 +170,7 @@ func TestDeleteUser(t *testing.T) {
 	// Verify deletion
 	var count int
 
-	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users_preferences WHERE userID = $1", 12345).Scan(&count)
+	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM users_preferences WHERE user_id = $1", 12345).Scan(&count)
 	if err != nil {
 		t.Fatalf("failed to verify deletion: %v", err)
 	}

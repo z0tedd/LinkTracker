@@ -108,26 +108,25 @@ func (f *StackOverflowFetcher) GetQuestionsByIDs(ctx context.Context) (domain.Ac
 
 func (f *StackOverflowFetcher) Fetch(ctx context.Context) (domain.Activity, bool) {
 	newActivity, updated := f.GetQuestionsByIDs(ctx)
-	if updated {
-		f.sub.LastActivity = newActivity
-		answerActivity, updatedAnswer := f.GetQuestionAnswers(ctx)
-		commentActivity, updatedComment := f.GetQuestionComments(ctx)
-		// Я знаю, что chain of responsibility вышел бы по-лучше,
-		// но для 2 методов несколько if подойдут
-		switch {
-		case updatedAnswer:
-			return answerActivity, true
-		case updatedComment:
-			return commentActivity, true
-		default:
-			newActivity.Username = "unknown"
-			newActivity.AnswerPreview = "Произошла активность по репозиторию"
-
-			return newActivity, true
-		}
+	if !updated {
+		return f.sub.LastActivity, false
 	}
 
-	return f.sub.LastActivity, false
+	oldActivity := f.sub.LastActivity
+	f.sub.LastActivity = newActivity
+
+	answerActivity, updatedAnswer := f.GetQuestionAnswers(ctx)
+	if updatedAnswer {
+		return answerActivity, true
+	}
+
+	commentActivity, updatedComment := f.GetQuestionComments(ctx)
+	if updatedComment {
+		return commentActivity, true
+	}
+	// Я знаю, что chain of responsibility вышел бы по-лучше,
+	// но для 2 методов несколько if подойдут
+	return oldActivity, false
 }
 
 func NewStackOverflowFetcher(sub *domain.Subscription, logger *slog.Logger,

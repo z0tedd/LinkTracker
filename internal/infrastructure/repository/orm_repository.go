@@ -79,9 +79,9 @@ func (r *ORMRepository) DeleteUser(ctx context.Context, userID int64) error {
 
 // Helper function to retrieve subIDs for a given user.
 func (r *ORMRepository) retrieveSubIDsForUser(ctx context.Context, tx pgx.Tx, userID int64) ([]int64, error) {
-	query := squirrel.Select("subID").
+	query := squirrel.Select("sub_id").
 		From("users_preferences").
-		Where(squirrel.Eq{"userID": userID}).
+		Where(squirrel.Eq{"user_id": userID}).
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := query.ToSql()
@@ -121,8 +121,8 @@ func (r *ORMRepository) retrieveSubIDsForUser(ctx context.Context, tx pgx.Tx, us
 func (r *ORMRepository) removeUserIDFromTgChatIDs(ctx context.Context, tx pgx.Tx, subIDs []int64, userID int64) error {
 	for _, subID := range subIDs {
 		updateQuery := squirrel.Update("subscriptions").
-			Set("tgChatIDs", squirrel.Expr("array_remove(tgChatIDs, ?)", userID)).
-			Where(squirrel.Eq{"subID": subID}).
+			Set("tg_chat_ids", squirrel.Expr("array_remove(tg_chat_ids, ?)", userID)).
+			Where(squirrel.Eq{"sub_id": subID}).
 			PlaceholderFormat(squirrel.Dollar)
 
 		sql, args, err := updateQuery.ToSql()
@@ -144,7 +144,7 @@ func (r *ORMRepository) removeUserIDFromTgChatIDs(ctx context.Context, tx pgx.Tx
 // Helper function to delete user preferences.
 func (r *ORMRepository) deleteUserPreferences(ctx context.Context, tx pgx.Tx, userID int64) error {
 	deleteQuery := squirrel.Delete("users_preferences").
-		Where(squirrel.Eq{"userID": userID}).
+		Where(squirrel.Eq{"user_id": userID}).
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := deleteQuery.ToSql()
@@ -201,7 +201,7 @@ func (r *ORMRepository) AddSubscription(ctx context.Context, userID int64, sub *
 
 // Helper function to find or create a subscription.
 func (r *ORMRepository) findOrCreateSubscription(ctx context.Context, tx pgx.Tx, sub *domain.Subscription, userID int64) (int64, error) {
-	query := squirrel.Select("subID").
+	query := squirrel.Select("sub_id").
 		From("subscriptions").
 		Where(squirrel.Eq{"url": sub.URL}).
 		PlaceholderFormat(squirrel.Dollar)
@@ -227,7 +227,7 @@ func (r *ORMRepository) findOrCreateSubscription(ctx context.Context, tx pgx.Tx,
 		}
 
 		insertQuery := squirrel.Insert("subscriptions").
-			Columns("subID", "url", "tgChatIDs", "lastActivity").
+			Columns("sub_id", "url", "tg_chat_ids", "last_activity").
 			Values(subID, sub.URL, []int64{userID}, lastActivityJSON).
 			PlaceholderFormat(squirrel.Dollar)
 
@@ -250,9 +250,9 @@ func (r *ORMRepository) findOrCreateSubscription(ctx context.Context, tx pgx.Tx,
 	default:
 		// Add userID to tgChatIDs if not already present
 		updateQuery := squirrel.Update("subscriptions").
-			Set("tgChatIDs", squirrel.Expr("array_append(tgChatIDs, ?)", userID)).
-			Where(squirrel.Eq{"subID": subID}).
-			Where(squirrel.Expr("NOT (? = ANY(tgChatIDs))", userID)).
+			Set("tg_chat_ids", squirrel.Expr("array_append(tg_chat_ids, ?)", userID)).
+			Where(squirrel.Eq{"sub_id": subID}).
+			Where(squirrel.Expr("NOT (? = ANY(tg_chat_ids))", userID)).
 			PlaceholderFormat(squirrel.Dollar)
 
 		sql, args, err := updateQuery.ToSql()
@@ -276,9 +276,9 @@ func (r *ORMRepository) upsertUserPreferences(ctx context.Context, tx pgx.Tx, us
 	subPreferences domain.UserPreferences,
 ) error {
 	prefQuery := squirrel.Insert("users_preferences").
-		Columns("userID", "subID", "filters", "tags", "url").
+		Columns("user_id", "sub_id", "filters", "tags", "url").
 		Values(userID, subID, pkg.ConvertToArray(subPreferences.Filters), subPreferences.Tags, subPreferences.URL).
-		Suffix("ON CONFLICT (userID, subID) DO UPDATE SET filters = EXCLUDED.filters, tags = EXCLUDED.tags, url = EXCLUDED.url").
+		Suffix("ON CONFLICT (user_id, sub_id) DO UPDATE SET filters = EXCLUDED.filters, tags = EXCLUDED.tags, url = EXCLUDED.url").
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := prefQuery.ToSql()
@@ -336,7 +336,7 @@ func (r *ORMRepository) RemoveSubscription(ctx context.Context, userID int64, li
 
 // Helper function to find subscription ID by URL.
 func (r *ORMRepository) findSubscriptionIDByURL(ctx context.Context, tx pgx.Tx, link string) (int64, error) {
-	query := squirrel.Select("subID").
+	query := squirrel.Select("sub_id").
 		From("subscriptions").
 		Where(squirrel.Eq{"url": link}).
 		PlaceholderFormat(squirrel.Dollar)
@@ -366,8 +366,8 @@ func (r *ORMRepository) findSubscriptionIDByURL(ctx context.Context, tx pgx.Tx, 
 // Helper function to remove a user from tgChatIDs for a subscription.
 func (r *ORMRepository) removeUserFromTgChatIDs(ctx context.Context, tx pgx.Tx, subID, userID int64) error {
 	updateQuery := squirrel.Update("subscriptions").
-		Set("tgChatIDs", squirrel.Expr("array_remove(tgChatIDs, ?)", userID)).
-		Where(squirrel.Eq{"subID": subID}).
+		Set("tg_chat_ids", squirrel.Expr("array_remove(tg_chat_ids, ?)", userID)).
+		Where(squirrel.Eq{"sub_id": subID}).
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := updateQuery.ToSql()
@@ -388,7 +388,7 @@ func (r *ORMRepository) removeUserFromTgChatIDs(ctx context.Context, tx pgx.Tx, 
 // Helper function to delete user preferences for a subscription.
 func (r *ORMRepository) deleteUserPreferencesForSub(ctx context.Context, tx pgx.Tx, userID, subID int64) error {
 	deleteQuery := squirrel.Delete("users_preferences").
-		Where(squirrel.Eq{"userID": userID, "subID": subID}).
+		Where(squirrel.Eq{"user_id": userID, "sub_id": subID}).
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := deleteQuery.ToSql()
@@ -408,9 +408,9 @@ func (r *ORMRepository) deleteUserPreferencesForSub(ctx context.Context, tx pgx.
 
 // GetSubscriptionsForUser retrieves all subscriptions for a user.
 func (r *ORMRepository) GetSubscriptionsForUser(ctx context.Context, tgChatID int64) ([]*domain.UserPreferences, error) {
-	query := squirrel.Select("subID", "filters", "tags", "url").
+	query := squirrel.Select("sub_id", "filters", "tags", "url").
 		From("users_preferences").
-		Where(squirrel.Eq{"userID": tgChatID}).
+		Where(squirrel.Eq{"user_id": tgChatID}).
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := query.ToSql()
@@ -451,9 +451,9 @@ func (r *ORMRepository) GetSubscriptionsForUser(ctx context.Context, tgChatID in
 
 // GetSubscription retrieves a subscription by ID.
 func (r *ORMRepository) GetSubscription(ctx context.Context, subID int64) (*domain.Subscription, error) {
-	query := squirrel.Select("subID", "url", "tgChatIDs", "lastActivity").
+	query := squirrel.Select("sub_id", "url", "tg_chat_ids", "last_activity").
 		From("subscriptions").
-		Where(squirrel.Eq{"subID": subID}).
+		Where(squirrel.Eq{"sub_id": subID}).
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := query.ToSql()
@@ -490,9 +490,9 @@ func (r *ORMRepository) GetSubscription(ctx context.Context, subID int64) (*doma
 func (r *ORMRepository) UpdateSubscription(ctx context.Context, subID int64, newSub *domain.Subscription) error {
 	query := squirrel.Update("subscriptions").
 		Set("url", newSub.URL).
-		Set("tgChatIDs", newSub.TgChatIDs).
-		Set("lastActivity", squirrel.Expr("?::JSONB", newSub.LastActivity)).
-		Where(squirrel.Eq{"subID": subID}).
+		Set("tg_chat_ids", newSub.TgChatIDs).
+		Set("last_activity", squirrel.Expr("?::JSONB", newSub.LastActivity)).
+		Where(squirrel.Eq{"sub_id": subID}).
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := query.ToSql()
@@ -522,8 +522,8 @@ func (r *ORMRepository) UpdateSubscription(ctx context.Context, subID int64, new
 // UpdateSubscriptionActivity updates the activity of a subscription.
 func (r *ORMRepository) UpdateSubscriptionActivity(ctx context.Context, subID int64, newActivity domain.Activity) error {
 	query := squirrel.Update("subscriptions").
-		Set("lastActivity", squirrel.Expr("?::JSONB", newActivity)).
-		Where(squirrel.Eq{"subID": subID}).
+		Set("last_activity", squirrel.Expr("?::JSONB", newActivity)).
+		Where(squirrel.Eq{"sub_id": subID}).
 		PlaceholderFormat(squirrel.Dollar)
 
 	sql, args, err := query.ToSql()
@@ -551,7 +551,7 @@ func (r *ORMRepository) UpdateSubscriptionActivity(ctx context.Context, subID in
 
 // GetSubsID retrieves all subscription IDs.
 func (r *ORMRepository) GetSubsID(ctx context.Context) *domain.Set {
-	query := squirrel.Select("subID").
+	query := squirrel.Select("sub_id").
 		From("subscriptions").
 		PlaceholderFormat(squirrel.Dollar)
 

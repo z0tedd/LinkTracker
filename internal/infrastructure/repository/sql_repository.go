@@ -21,8 +21,8 @@ type Creator struct {
 	logger *slog.Logger
 }
 
-func NewCreator(logger *slog.Logger, config *config.Config) Creator {
-	return Creator{config: config, logger: logger}
+func NewCreator(logger *slog.Logger, cfg *config.Config) Creator {
+	return Creator{config: cfg, logger: logger}
 }
 
 func (c Creator) Create(ctx context.Context) (Repository, error) {
@@ -116,7 +116,7 @@ func (r *SQLRepository) DeleteUser(ctx context.Context, userID int64) error {
 // Helper function to retrieve subIDs for a user.
 func (r *SQLRepository) retrieveSubIDsForUser(ctx context.Context, tx pgx.Tx, userID int64) ([]int64, error) {
 	query := `
-        SELECT subID FROM users_preferences WHERE userID = $1
+        SELECT sub_id FROM users_preferences WHERE user_id = $1
     `
 
 	rows, err := tx.Query(ctx, query, userID)
@@ -151,8 +151,8 @@ func (r *SQLRepository) removeUserIDFromTgChatIDs(ctx context.Context, tx pgx.Tx
 	for _, subID := range subIDs {
 		updateQuery := `
             UPDATE subscriptions
-            SET tgChatIDs = array_remove(tgChatIDs, $1)
-            WHERE subID = $2
+            SET tg_chat_ids = array_remove(tg_chat_ids, $1)
+            WHERE sub_id = $2
         `
 
 		_, err := tx.Exec(ctx, updateQuery, userID, subID)
@@ -168,7 +168,7 @@ func (r *SQLRepository) removeUserIDFromTgChatIDs(ctx context.Context, tx pgx.Tx
 // Helper function to delete user preferences.
 func (r *SQLRepository) deleteUserPreferences(ctx context.Context, tx pgx.Tx, userID int64) error {
 	deleteQuery := `
-        DELETE FROM users_preferences WHERE userID = $1
+        DELETE FROM users_preferences WHERE user_id = $1
     `
 
 	_, err := tx.Exec(ctx, deleteQuery, userID)
@@ -217,7 +217,7 @@ func (r *SQLRepository) AddSubscription(ctx context.Context, userID int64,
 // Helper function to find or create a subscription.
 func (r *SQLRepository) findOrCreateSubscription(ctx context.Context, tx pgx.Tx, sub *domain.Subscription, userID int64) (int64, error) {
 	query := `
-        SELECT subID FROM subscriptions WHERE url = $1
+        SELECT sub_id FROM subscriptions WHERE url = $1
     `
 
 	var subID int64
@@ -235,7 +235,7 @@ func (r *SQLRepository) findOrCreateSubscription(ctx context.Context, tx pgx.Tx,
 		}
 
 		insertQuery := `
-            INSERT INTO subscriptions (subID, url, tgChatIDs, lastActivity)
+            INSERT INTO subscriptions (sub_id, url, tg_chat_ids, last_activity)
             VALUES ($1, $2, $3, $4::JSONB)
         `
 
@@ -253,8 +253,8 @@ func (r *SQLRepository) findOrCreateSubscription(ctx context.Context, tx pgx.Tx,
 		// Add userID to tgChatIDs if not already present
 		updateQuery := `
             UPDATE subscriptions
-            SET tgChatIDs = array_append(tgChatIDs, $1)
-            WHERE subID = $2 AND NOT ($1 = ANY(tgChatIDs))
+            SET tg_chat_ids = array_append(tg_chat_ids, $1)
+            WHERE sub_id = $2 AND NOT ($1 = ANY(tg_chat_ids))
         `
 
 		_, err = tx.Exec(ctx, updateQuery, userID, subID)
@@ -272,9 +272,9 @@ func (r *SQLRepository) upsertUserPreferences(ctx context.Context, tx pgx.Tx,
 	userID, subID int64, subPreferences domain.UserPreferences,
 ) error {
 	prefQuery := `
-        INSERT INTO users_preferences (userID, subID, filters, tags, url)
+        INSERT INTO users_preferences (user_id, sub_id, filters, tags, url)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (userID, subID) DO UPDATE SET
+        ON CONFLICT (user_id, sub_id) DO UPDATE SET
             filters = EXCLUDED.filters,
             tags = EXCLUDED.tags,
             url = EXCLUDED.url
@@ -306,7 +306,7 @@ func (r *SQLRepository) RemoveSubscription(ctx context.Context, userID int64, li
 	// Find subscription ID by URL
 	var subID int64
 
-	query := `SELECT subID FROM subscriptions WHERE url = $1`
+	query := `SELECT sub_id FROM subscriptions WHERE url = $1`
 
 	err = tx.QueryRow(ctx, query, link).Scan(&subID)
 	if err != nil {
@@ -322,8 +322,8 @@ func (r *SQLRepository) RemoveSubscription(ctx context.Context, userID int64, li
 	// Remove user from subscription's tgChatIDs
 	updateQuery := `
         UPDATE subscriptions
-        SET tgChatIDs = array_remove(tgChatIDs, $1)
-        WHERE subID = $2
+        SET tg_chat_ids = array_remove(tg_chat_ids, $1)
+        WHERE sub_id = $2
     `
 
 	_, err = tx.Exec(ctx, updateQuery, userID, subID)
@@ -335,7 +335,7 @@ func (r *SQLRepository) RemoveSubscription(ctx context.Context, userID int64, li
 	// Remove user preferences
 	deleteQuery := `
         DELETE FROM users_preferences
-        WHERE userID = $1 AND subID = $2
+        WHERE user_id = $1 AND sub_id = $2
     `
 
 	_, err = tx.Exec(ctx, deleteQuery, userID, subID)
@@ -355,9 +355,9 @@ func (r *SQLRepository) RemoveSubscription(ctx context.Context, userID int64, li
 // GetSubscriptionsForUser retrieves all subscriptions for a user.
 func (r *SQLRepository) GetSubscriptionsForUser(ctx context.Context, tgChatID int64) ([]*domain.UserPreferences, error) {
 	query := `
-        SELECT subID, filters, tags, url
+        SELECT sub_id, filters, tags, url
         FROM users_preferences
-        WHERE userID = $1
+        WHERE user_id = $1
     `
 
 	rows, err := r.db.Query(ctx, query, tgChatID)
@@ -394,9 +394,9 @@ func (r *SQLRepository) GetSubscriptionsForUser(ctx context.Context, tgChatID in
 // GetSubscription retrieves a subscription by ID.
 func (r *SQLRepository) GetSubscription(ctx context.Context, subID int64) (*domain.Subscription, error) {
 	query := `
-        SELECT subID, url, tgChatIDs, lastActivity
+        SELECT sub_id, url, tg_chat_ids, last_activity
         FROM subscriptions
-        WHERE subID = $1
+        WHERE sub_id = $1
     `
 	row := r.db.QueryRow(ctx, query, subID)
 
@@ -426,8 +426,8 @@ func (r *SQLRepository) GetSubscription(ctx context.Context, subID int64) (*doma
 func (r *SQLRepository) UpdateSubscription(ctx context.Context, subID int64, newSub *domain.Subscription) error {
 	query := `
         UPDATE subscriptions
-        SET url = $1, tgChatIDs = $2, lastActivity = $3::JSONB
-        WHERE subID = $4
+        SET url = $1, tg_chat_ids = $2, last_activity = $3::JSONB
+        WHERE sub_id = $4
     `
 
 	// Marshal LastActivity to JSON
@@ -451,8 +451,8 @@ func (r *SQLRepository) UpdateSubscription(ctx context.Context, subID int64, new
 func (r *SQLRepository) UpdateSubscriptionActivity(ctx context.Context, subID int64, newActivity domain.Activity) error {
 	query := `
         UPDATE subscriptions
-        SET lastActivity = $1::JSONB
-        WHERE subID = $2
+        SET last_activity = $1::JSONB
+        WHERE sub_id = $2
     `
 
 	activityJSON, err := json.Marshal(newActivity)
@@ -473,7 +473,7 @@ func (r *SQLRepository) UpdateSubscriptionActivity(ctx context.Context, subID in
 // GetSubsID retrieves all subscription IDs.
 func (r *SQLRepository) GetSubsID(ctx context.Context) *domain.Set {
 	query := `
-        SELECT subID FROM subscriptions
+        SELECT sub_id FROM subscriptions
     `
 
 	rows, err := r.db.Query(ctx, query)

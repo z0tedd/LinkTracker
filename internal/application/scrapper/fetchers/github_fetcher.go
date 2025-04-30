@@ -125,23 +125,22 @@ func (f *GithubFetcher) GetIssues(ctx context.Context) (domain.Activity, bool) {
 
 func (f *GithubFetcher) Fetch(ctx context.Context) (domain.Activity, bool) {
 	newActivity, updated := f.GetRepositoryInfo(ctx)
-	if updated {
-		f.sub.LastActivity = newActivity
-		prActivity, updatedPR := f.GetPullRequests(ctx)
-		issueActivity, updatedIssue := f.GetIssues(ctx)
-
-		switch {
-		case updatedPR:
-			return prActivity, true
-		case updatedIssue:
-			return issueActivity, true
-		default:
-			newActivity.Username = "unknown"
-			newActivity.AnswerPreview = "Произошла активность по репозиторию"
-
-			return newActivity, true
-		}
+	if !updated {
+		return f.sub.LastActivity, false
 	}
 
-	return f.sub.LastActivity, false
+	oldActivity := f.sub.LastActivity
+	f.sub.LastActivity = newActivity
+
+	prActivity, updatedPR := f.GetPullRequests(ctx)
+	if updatedPR {
+		return prActivity, true
+	}
+
+	issueActivity, updatedIssue := f.GetIssues(ctx)
+	if updatedIssue {
+		return issueActivity, true
+	}
+
+	return oldActivity, false
 }
