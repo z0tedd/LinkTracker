@@ -50,7 +50,7 @@ func main() {
 		return
 	}
 
-	checker, err := checker.NewChecker(cfg, logger, repo, notificationSender, fetcherFabric)
+	notificationChecker, err := checker.NewChecker(cfg, logger, repo, notificationSender, fetcherFabric)
 	if err != nil {
 		logger.Error("checker startup", slog.Any("error", err.Error()))
 		return
@@ -71,7 +71,7 @@ func main() {
 
 	_, err = scheduler.NewJob(
 		gocron.CronJob(cfg.Crontab, false),
-		gocron.NewTask(checker.CheckAllSubscriptions, ctx))
+		gocron.NewTask(notificationChecker.CheckAllSubscriptions, ctx))
 	// checker.CheckLinks, repo),
 	if err != nil {
 		logger.Error("screduler newjob", slog.Any("error:", err))

@@ -21,10 +21,10 @@ type KafkaBotServer struct {
 	tgAPI    *tgbotapi.BotAPI
 }
 
-func NewKafkaBotServer(config *config.Config, consumer sarama.ConsumerGroup,
+func NewKafkaBotServer(cfg *config.Config, consumer sarama.ConsumerGroup,
 	logger *slog.Logger, tgAPI *tgbotapi.BotAPI,
 ) (KafkaBotServer, error) {
-	return KafkaBotServer{logger: logger, consumer: consumer, cfg: config, tgAPI: tgAPI}, nil
+	return KafkaBotServer{logger: logger, consumer: consumer, cfg: cfg, tgAPI: tgAPI}, nil
 }
 
 func (s *KafkaBotServer) Start(ctx context.Context) error {
