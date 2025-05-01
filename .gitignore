@@ -10,9 +10,8 @@
 bin
 .pgdata
 pgadmin-data
-migrations
-/redis
-/kafka
+/redis/data/*
+/kafka/data/*
 
 # Test binary, built with `go test -c`
 *.test

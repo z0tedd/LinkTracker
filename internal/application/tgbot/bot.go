@@ -34,9 +34,9 @@ func (b *TrackingBot) Run(ctx context.Context) {
 	}
 
 	// Set the commands using SetMyCommands
-	config := tgbotapi.NewSetMyCommands(commands...)
+	cfg := tgbotapi.NewSetMyCommands(commands...)
 
-	_, err := b.botAPI.Request(config)
+	_, err := b.botAPI.Request(cfg)
 	if err != nil {
 		b.logger.Warn("setting commands", slog.Any("error", err.Error()))
 	} else {
@@ -62,7 +62,7 @@ func (b *TrackingBot) Run(ctx context.Context) {
 	}
 
 	redisClient := redis.NewClient(redisOpts)
-	handler := http_handler.NewHTTPHandler(b.botAPI, clientScrapper, states, b.logger, redisClient)
+	handler := http_handler.NewTelegramHandler(b.botAPI, clientScrapper, states, b.logger, redisClient)
 
 	updates := b.botAPI.GetUpdatesChan(updateConfig)
 	for update := range updates {
