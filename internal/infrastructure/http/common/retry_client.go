@@ -55,7 +55,7 @@ func (c *ConfigurableHTTPClient) Do(req *http.Request) (*http.Response, error) {
 		}
 
 		defer func(r *http.Response) {
-			if r != nil && r.Body != nil {
+			if r != nil && r.Body != nil && r.StatusCode >= 300 {
 				_ = r.Body.Close()
 			}
 		}(resp)
