@@ -22,12 +22,12 @@ func NewSender(cfg *config.Config, logger *slog.Logger) (Sender, error) {
 
 	switch cfg.MessageTransportType {
 	case pkg.TransportTypeHTTP:
-		notificationSender, err = NewHTTPNotificationSender(cfg.BotBaseURL, logger)
+		notificationSender, err = NewHTTPNotificationSender(cfg.BotBaseURL, logger, cfg)
 	case pkg.TransportTypeKafka:
 		notificationSender, err = NewKafkaNotificationSender(cfg, logger)
 	default:
 		logger.Warn("falling back to HTTP transport", "transportType", cfg.MessageTransportType)
-		notificationSender, err = NewHTTPNotificationSender(cfg.BotBaseURL, logger)
+		notificationSender, err = NewHTTPNotificationSender(cfg.BotBaseURL, logger, cfg)
 	}
 
 	if err != nil {

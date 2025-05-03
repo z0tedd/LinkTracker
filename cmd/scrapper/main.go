@@ -42,7 +42,7 @@ func main() {
 		return
 	}
 
-	fetcherFabric := fetchers.NewDefaultFetcherFactory(logger)
+	fetcherFabric := fetchers.NewDefaultFetcherFactory(logger, cfg)
 
 	notificationSender, err := notification.NewSender(cfg, logger)
 	if err != nil {

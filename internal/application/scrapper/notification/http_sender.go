@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 
+	"golang.org/x/time/rate"
+
 	botAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/client"
 	"github.com/central-university-dev/go-z0tedd/internal/application/dtos"
+	"github.com/central-university-dev/go-z0tedd/internal/config"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
 )
 
 type HTTPNotificationSender struct {
@@ -15,8 +19,11 @@ type HTTPNotificationSender struct {
 	logger    *slog.Logger
 }
 
-func NewHTTPNotificationSender(botBaseURL string, logger *slog.Logger) (Sender, error) {
-	botClient, err := botAPI.NewClientWithResponses(botBaseURL)
+func NewHTTPNotificationSender(botBaseURL string, logger *slog.Logger, cfg *config.Config) (Sender, error) {
+	doer := common.NewConfigurableHTTPClient(cfg.Timeout, rate.Limit(cfg.RateLimit),
+		cfg.Burst, cfg.RetryCount, cfg.InitialRetryDelay)
+
+	botClient, err := botAPI.NewClientWithResponses(botBaseURL, botAPI.WithHTTPClient(doer))
 	if err != nil {
 		return HTTPNotificationSender{}, fmt.Errorf("new HttpNotificationSender: %w", err)
 	}

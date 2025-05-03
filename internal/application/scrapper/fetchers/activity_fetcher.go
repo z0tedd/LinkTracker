@@ -6,9 +6,13 @@ import (
 	"log/slog"
 	"net/url"
 
+	"golang.org/x/time/rate"
+
 	githubAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/github"
 	stackOverflowAPI "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/stackoverflow"
+	"github.com/central-university-dev/go-z0tedd/internal/config"
 	"github.com/central-university-dev/go-z0tedd/internal/domain"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
 	githubclient "github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/github_client"
 	stackoverflowclient "github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/stackoverflow_client"
 	"github.com/central-university-dev/go-z0tedd/pkg"
@@ -37,10 +41,11 @@ func (f BasicFetcher) Fetch(_ context.Context) (domain.Activity, bool) {
 
 type DefaultFetcherFactory struct {
 	logger *slog.Logger
+	cfg    *config.Config
 }
 
-func NewDefaultFetcherFactory(logger *slog.Logger) DefaultFetcherFactory {
-	return DefaultFetcherFactory{logger: logger}
+func NewDefaultFetcherFactory(logger *slog.Logger, cfg *config.Config) DefaultFetcherFactory {
+	return DefaultFetcherFactory{logger: logger, cfg: cfg}
 }
 
 func (ff DefaultFetcherFactory) NewFetcherFromSub(sub *domain.Subscription) (Fetcher, error) {
@@ -49,10 +54,13 @@ func (ff DefaultFetcherFactory) NewFetcherFromSub(sub *domain.Subscription) (Fet
 		return nil, fmt.Errorf("creating fetcher: %w", err)
 	}
 
+	httpDoer := common.NewConfigurableHTTPClient(ff.cfg.Timeout, rate.Limit(ff.cfg.RateLimit),
+		ff.cfg.Burst, ff.cfg.RetryCount, ff.cfg.InitialRetryDelay)
+
 	hostname := parsedURL.Hostname()
 	switch hostname {
 	case pkg.Stackoverflow:
-		codegenClient, err := stackOverflowAPI.NewClientWithResponses(pkg.StackOverflowAddress)
+		codegenClient, err := stackOverflowAPI.NewClientWithResponses(pkg.StackOverflowAddress, stackOverflowAPI.WithHTTPClient(httpDoer))
 		if err != nil {
 			return &StackOverflowFetcher{}, fmt.Errorf("github-client startup: %w", err)
 		}
@@ -62,7 +70,7 @@ func (ff DefaultFetcherFactory) NewFetcherFromSub(sub *domain.Subscription) (Fet
 		return NewStackOverflowFetcher(sub, ff.logger, stackOverflowClient)
 
 	case pkg.Github:
-		codegenClient, err := githubAPI.NewClientWithResponses(pkg.GithubAddress)
+		codegenClient, err := githubAPI.NewClientWithResponses(pkg.GithubAddress, githubAPI.WithHTTPClient(httpDoer))
 		if err != nil {
 			return nil, fmt.Errorf("github-client startup: %w", err)
 		}

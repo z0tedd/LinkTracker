@@ -6,10 +6,12 @@ import (
 
 	"github.com/go-redis/redis"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"golang.org/x/time/rate"
 
 	"github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/client"
 	http_handler "github.com/central-university-dev/go-z0tedd/internal/application/tgbot/handlers/http"
 	"github.com/central-university-dev/go-z0tedd/internal/config"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/statemanager"
 )
 
@@ -51,7 +53,10 @@ func (b *TrackingBot) Run(ctx context.Context) {
 		b.logger.Warn("running bot", slog.Any("error", err.Error()))
 	}
 
-	clientScrapper, err := client.NewClient(b.cfg.ScrapperHTTPAddress)
+	httpDoer := common.NewConfigurableHTTPClient(b.cfg.Timeout, rate.Limit(b.cfg.RateLimit),
+		b.cfg.Burst, b.cfg.RetryCount, b.cfg.InitialRetryDelay)
+
+	clientScrapper, err := client.NewClient(b.cfg.ScrapperHTTPAddress, client.WithHTTPClient(httpDoer))
 	if err != nil {
 		b.logger.Warn("Scrapper client", slog.Any("error", err.Error()))
 	}
