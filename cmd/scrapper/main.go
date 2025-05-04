@@ -15,6 +15,7 @@ import (
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/notification"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/server"
 	"github.com/central-university-dev/go-z0tedd/internal/config"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
 )
 
@@ -88,6 +89,7 @@ func main() {
 	// Register the handlers with the Echo router
 	unimplemented_server.RegisterHandlers(e, myServer)
 
+	common.SetupRateLimitMiddleware(e, cfg)
 	// Start the server
 	e.Logger.Fatal(e.Start(":8080"))
 }

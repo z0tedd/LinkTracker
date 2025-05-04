@@ -61,9 +61,9 @@ go run cmd/scrapper/main.go
 - [x] Все HTTP-запросы поддерживают Timeout
 - [x] Все HTTP-запросы поддерживают Retry
   - [x] сконфигурируйте или реализуйте (если её нет) поддержку Retry в HTTP-клиентах
-- [ ] У каждого публичного endpoint'а есть выставленный Rate Limiting на основе IP-адреса клиента
+- [x] У каждого публичного endpoint'а есть выставленный Rate Limiting на основе IP-адреса клиента
 - [ ] В случае недоступности сервиса продолжительное время вместо Retry соединение разрывается при помощи Circuit Breaker
-- [ ] В случае отказа HTTP или Kafka при отправке уведомлений происходит fallback на альтернативный транспорт
+- [x] В случае отказа HTTP или Kafka при отправке уведомлений происходит fallback на альтернативный транспорт
 
 ---
 
@@ -75,11 +75,11 @@ go run cmd/scrapper/main.go
 - [x] Retry происходит только в случае если это имеет смысл: вам нужен настраиваемый список кодов, на которые происходит retry
 - [ ] Параметры Circuit Breaker настраиваются в конфигурации
 - [ ] Circuit Breaker настроен в режиме скользящего окна, например:
-  - [ ] slidingWindowSize = 1
-  - [ ] minimumRequiredCalls = 1
-  - [ ] failureRateThreshold = 100
-  - [ ] permittedCallsInHalfOpenState = 1
-  - [ ] waitDurationInOpenState = "1s"
+  - slidingWindowSize = 1
+  - minimumRequiredCalls = 1
+  - failureRateThreshold = 100
+  - permittedCallsInHalfOpenState = 1
+  - waitDurationInOpenState = "1s"
 
 ---
 

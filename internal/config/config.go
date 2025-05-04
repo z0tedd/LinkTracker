@@ -19,6 +19,7 @@ type Config struct {
 	Timeout              time.Duration `env:"TIMEOUT" envDefault:"10s"`            // Timeout duration
 	RateLimit            uint          `env:"RATE_LIMIT" envDefault:"15"`          // Rate limit per second
 	Burst                int           `env:"BURST" envDefault:"5"`                // Burst capacity for rate limiting
+	ExpiresIn            time.Duration `env:"EXPIRES_IN" envDefault:"5s"`          // Burst capacity for rate limiting
 	RetryCount           uint          `env:"RETRY_COUNT" envDefault:"15"`         // Number of retry attempts
 	InitialRetryDelay    time.Duration `env:"INITIAL_RETRY_DELAY" envDefault:"1s"` // Initial delay for retries
 }
