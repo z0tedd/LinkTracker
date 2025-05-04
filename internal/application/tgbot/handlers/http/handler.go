@@ -416,7 +416,6 @@ func (h *TelegramHandler) fetchAndCacheSubscriptions(ctx context.Context, userID
 	} else if err != redis.Nil {
 		// Redis error (not a cache miss)
 		h.logger.Error("Ошибка при получении данных из Redis", slog.Any("error", err))
-		return nil, err
 	}
 
 	// Step 2: Cache miss - Fetch data from the API

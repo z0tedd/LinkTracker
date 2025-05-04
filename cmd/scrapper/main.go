@@ -44,7 +44,7 @@ func main() {
 
 	fetcherFabric := fetchers.NewDefaultFetcherFactory(logger, cfg)
 
-	notificationSender, err := notification.NewSender(cfg, logger)
+	notificationSender, err := notification.NewSenderWithFallback(cfg, logger)
 	if err != nil {
 		logger.Error("starting app", "error", err)
 		return
@@ -79,9 +79,7 @@ func main() {
 	}
 
 	scheduler.Start()
-	// Может быть нужно создать еще одну абстракцию над http сервером?
-	// switch cfg.MessageTransportType {
-	// case "http":
+
 	e := echo.New()
 
 	// Create an instance of your server implementation
