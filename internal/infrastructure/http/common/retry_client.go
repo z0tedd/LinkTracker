@@ -11,22 +11,22 @@ import (
 	"github.com/central-university-dev/go-z0tedd/pkg"
 )
 
-// ConfigurableHTTPClient — клиент с поддержкой rate limiting, retry и timeout.
-type ConfigurableHTTPClient struct {
+// HTTPClientWithRetry — клиент с поддержкой rate limiting, retry и timeout.
+type HTTPClientWithRetry struct {
 	client  *http.Client
 	retry   uint
 	delay   time.Duration
 	limiter *rate.Limiter
 }
 
-func NewConfigurableHTTPClient(
+func NewHTTPClientWithRetry(
 	timeout time.Duration,
 	rateLimit rate.Limit,
 	burst int,
 	retry uint,
 	initialDelay time.Duration,
-) *ConfigurableHTTPClient {
-	return &ConfigurableHTTPClient{
+) *HTTPClientWithRetry {
+	return &HTTPClientWithRetry{
 		client: &http.Client{
 			Timeout: timeout,
 		},
@@ -37,7 +37,7 @@ func NewConfigurableHTTPClient(
 }
 
 // Do выполняет HTTP-запрос с ограничением частоты, retry и корректной обработкой ошибок.
-func (c *ConfigurableHTTPClient) Do(req *http.Request) (*http.Response, error) {
+func (c *HTTPClientWithRetry) Do(req *http.Request) (*http.Response, error) {
 	// Блокируемся до тех пор, пока лимит не позволит выполнить запрос
 	if err := c.limiter.Wait(req.Context()); err != nil {
 		return nil, fmt.Errorf("rate limiter error: %w", err)

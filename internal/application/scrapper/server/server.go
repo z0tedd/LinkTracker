@@ -117,7 +117,7 @@ func (s *HTTPScrapperServer) PostLinks(ctx echo.Context, params server.PostLinks
 	return ctx.JSON(http.StatusCreated, map[string]string{"message": "Link added"})
 }
 
-// //nolint:revive,stylecheck // implementation of generated interface.
+// //nolint:revive // implementation of generated interface.
 func (s *HTTPScrapperServer) DeleteTgChatId(ctx echo.Context, id int64) error {
 	err := s.repo.DeleteUser(ctx.Request().Context(), id)
 	if err != nil {
@@ -135,7 +135,7 @@ func (s *HTTPScrapperServer) DeleteTgChatId(ctx echo.Context, id int64) error {
 	return ctx.JSON(http.StatusOK, map[string]string{"message": "Chat deleted"})
 }
 
-// //nolint:revive,stylecheck // implementation of generated interface.
+// //nolint:revive // implementation of generated interface.
 func (s *HTTPScrapperServer) PostTgChatId(ctx echo.Context, id int64) error {
 	err := s.repo.RegisterUser(ctx.Request().Context(), id)
 	if err != nil {

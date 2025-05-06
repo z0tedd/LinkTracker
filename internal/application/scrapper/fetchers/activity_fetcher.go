@@ -54,8 +54,10 @@ func (ff DefaultFetcherFactory) NewFetcherFromSub(sub *domain.Subscription) (Fet
 		return nil, fmt.Errorf("creating fetcher: %w", err)
 	}
 
-	httpDoer := common.NewConfigurableHTTPClient(ff.cfg.Timeout, rate.Limit(ff.cfg.RateLimit),
+	doerWithRetry := common.NewHTTPClientWithRetry(ff.cfg.Timeout, rate.Limit(ff.cfg.RateLimit),
 		ff.cfg.Burst, ff.cfg.RetryCount, ff.cfg.InitialRetryDelay)
+
+	httpDoer := common.NewHTTPClientWithCircuitBreaker(doerWithRetry, ff.cfg, ff.logger)
 
 	hostname := parsedURL.Hostname()
 	switch hostname {

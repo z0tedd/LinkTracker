@@ -53,8 +53,10 @@ func (b *TrackingBot) Run(ctx context.Context) {
 		b.logger.Warn("running bot", slog.Any("error", err.Error()))
 	}
 
-	httpDoer := common.NewConfigurableHTTPClient(b.cfg.Timeout, rate.Limit(b.cfg.RateLimit),
+	doerWithRetry := common.NewHTTPClientWithRetry(b.cfg.Timeout, rate.Limit(b.cfg.RateLimit),
 		b.cfg.Burst, b.cfg.RetryCount, b.cfg.InitialRetryDelay)
+
+	httpDoer := common.NewHTTPClientWithCircuitBreaker(doerWithRetry, b.cfg, b.logger)
 
 	clientScrapper, err := client.NewClient(b.cfg.ScrapperHTTPAddress, client.WithHTTPClient(httpDoer))
 	if err != nil {

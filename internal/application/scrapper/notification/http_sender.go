@@ -20,10 +20,11 @@ type HTTPNotificationSender struct {
 }
 
 func NewHTTPNotificationSender(botBaseURL string, logger *slog.Logger, cfg *config.Config) (Sender, error) {
-	doer := common.NewConfigurableHTTPClient(cfg.Timeout, rate.Limit(cfg.RateLimit),
+	doerWithRetry := common.NewHTTPClientWithRetry(cfg.Timeout, rate.Limit(cfg.RateLimit),
 		cfg.Burst, cfg.RetryCount, cfg.InitialRetryDelay)
+	httpDoer := common.NewHTTPClientWithCircuitBreaker(doerWithRetry, cfg, logger)
 
-	botClient, err := botAPI.NewClientWithResponses(botBaseURL, botAPI.WithHTTPClient(doer))
+	botClient, err := botAPI.NewClientWithResponses(botBaseURL, botAPI.WithHTTPClient(httpDoer))
 	if err != nil {
 		return HTTPNotificationSender{}, fmt.Errorf("new HttpNotificationSender: %w", err)
 	}

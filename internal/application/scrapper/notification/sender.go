@@ -57,12 +57,11 @@ func NewSenderWithFallback(cfg *config.Config, logger *slog.Logger) (Sender, err
 		return NewFallbackSender(logger, kafkaSender, httpSender), nil
 	default:
 		return NewFallbackSender(logger, httpSender, kafkaSender), nil
-
 	}
 }
 
 // Можно было сделать в формате httpErr, kafkaErr, но не уверен, хороший ли это вариант
-//func NewSenderWithFallback(cfg *config.Config, logger *slog.Logger) (Sender, error) {
+// func NewSenderWithFallback(cfg *config.Config, logger *slog.Logger) (Sender, error) {
 //     var primary Sender
 //     var fallback Sender
 //     var err error
