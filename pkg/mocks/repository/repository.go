@@ -3,6 +3,8 @@
 package mockRepository
 
 import (
+	context "context"
+
 	domain "github.com/central-university-dev/go-z0tedd/internal/domain"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -20,17 +22,17 @@ func (_m *Repository) EXPECT() *Repository_Expecter {
 	return &Repository_Expecter{mock: &_m.Mock}
 }
 
-// AddSubscription provides a mock function with given fields: userID, sub, subPreferences
-func (_m *Repository) AddSubscription(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences) error {
-	ret := _m.Called(userID, sub, subPreferences)
+// AddSubscription provides a mock function with given fields: ctx, userID, sub, subPreferences
+func (_m *Repository) AddSubscription(ctx context.Context, userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences) error {
+	ret := _m.Called(ctx, userID, sub, subPreferences)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddSubscription")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, domain.Subscription, domain.UserPreferences) error); ok {
-		r0 = rf(userID, sub, subPreferences)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, *domain.Subscription, domain.UserPreferences) error); ok {
+		r0 = rf(ctx, userID, sub, subPreferences)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -44,16 +46,17 @@ type Repository_AddSubscription_Call struct {
 }
 
 // AddSubscription is a helper method to define mock.On call
+//   - ctx context.Context
 //   - userID int64
-//   - sub domain.Subscription
+//   - sub *domain.Subscription
 //   - subPreferences domain.UserPreferences
-func (_e *Repository_Expecter) AddSubscription(userID interface{}, sub interface{}, subPreferences interface{}) *Repository_AddSubscription_Call {
-	return &Repository_AddSubscription_Call{Call: _e.mock.On("AddSubscription", userID, sub, subPreferences)}
+func (_e *Repository_Expecter) AddSubscription(ctx interface{}, userID interface{}, sub interface{}, subPreferences interface{}) *Repository_AddSubscription_Call {
+	return &Repository_AddSubscription_Call{Call: _e.mock.On("AddSubscription", ctx, userID, sub, subPreferences)}
 }
 
-func (_c *Repository_AddSubscription_Call) Run(run func(userID int64, sub domain.Subscription, subPreferences domain.UserPreferences)) *Repository_AddSubscription_Call {
+func (_c *Repository_AddSubscription_Call) Run(run func(ctx context.Context, userID int64, sub *domain.Subscription, subPreferences domain.UserPreferences)) *Repository_AddSubscription_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64), args[1].(domain.Subscription), args[2].(domain.UserPreferences))
+		run(args[0].(context.Context), args[1].(int64), args[2].(*domain.Subscription), args[3].(domain.UserPreferences))
 	})
 	return _c
 }
@@ -63,22 +66,22 @@ func (_c *Repository_AddSubscription_Call) Return(_a0 error) *Repository_AddSubs
 	return _c
 }
 
-func (_c *Repository_AddSubscription_Call) RunAndReturn(run func(int64, domain.Subscription, domain.UserPreferences) error) *Repository_AddSubscription_Call {
+func (_c *Repository_AddSubscription_Call) RunAndReturn(run func(context.Context, int64, *domain.Subscription, domain.UserPreferences) error) *Repository_AddSubscription_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// DeleteUser provides a mock function with given fields: userID
-func (_m *Repository) DeleteUser(userID int64) error {
-	ret := _m.Called(userID)
+// DeleteUser provides a mock function with given fields: ctx, userID
+func (_m *Repository) DeleteUser(ctx context.Context, userID int64) error {
+	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteUser")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64) error); ok {
-		r0 = rf(userID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = rf(ctx, userID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -92,14 +95,15 @@ type Repository_DeleteUser_Call struct {
 }
 
 // DeleteUser is a helper method to define mock.On call
+//   - ctx context.Context
 //   - userID int64
-func (_e *Repository_Expecter) DeleteUser(userID interface{}) *Repository_DeleteUser_Call {
-	return &Repository_DeleteUser_Call{Call: _e.mock.On("DeleteUser", userID)}
+func (_e *Repository_Expecter) DeleteUser(ctx interface{}, userID interface{}) *Repository_DeleteUser_Call {
+	return &Repository_DeleteUser_Call{Call: _e.mock.On("DeleteUser", ctx, userID)}
 }
 
-func (_c *Repository_DeleteUser_Call) Run(run func(userID int64)) *Repository_DeleteUser_Call {
+func (_c *Repository_DeleteUser_Call) Run(run func(ctx context.Context, userID int64)) *Repository_DeleteUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64))
+		run(args[0].(context.Context), args[1].(int64))
 	})
 	return _c
 }
@@ -109,25 +113,25 @@ func (_c *Repository_DeleteUser_Call) Return(_a0 error) *Repository_DeleteUser_C
 	return _c
 }
 
-func (_c *Repository_DeleteUser_Call) RunAndReturn(run func(int64) error) *Repository_DeleteUser_Call {
+func (_c *Repository_DeleteUser_Call) RunAndReturn(run func(context.Context, int64) error) *Repository_DeleteUser_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetSubsID provides a mock function with no fields
-func (_m *Repository) GetSubsID() domain.Set {
-	ret := _m.Called()
+// GetSubsID provides a mock function with given fields: ctx
+func (_m *Repository) GetSubsID(ctx context.Context) *domain.Set {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSubsID")
 	}
 
-	var r0 domain.Set
-	if rf, ok := ret.Get(0).(func() domain.Set); ok {
-		r0 = rf()
+	var r0 *domain.Set
+	if rf, ok := ret.Get(0).(func(context.Context) *domain.Set); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(domain.Set)
+			r0 = ret.Get(0).(*domain.Set)
 		}
 	}
 
@@ -140,48 +144,51 @@ type Repository_GetSubsID_Call struct {
 }
 
 // GetSubsID is a helper method to define mock.On call
-func (_e *Repository_Expecter) GetSubsID() *Repository_GetSubsID_Call {
-	return &Repository_GetSubsID_Call{Call: _e.mock.On("GetSubsID")}
+//   - ctx context.Context
+func (_e *Repository_Expecter) GetSubsID(ctx interface{}) *Repository_GetSubsID_Call {
+	return &Repository_GetSubsID_Call{Call: _e.mock.On("GetSubsID", ctx)}
 }
 
-func (_c *Repository_GetSubsID_Call) Run(run func()) *Repository_GetSubsID_Call {
+func (_c *Repository_GetSubsID_Call) Run(run func(ctx context.Context)) *Repository_GetSubsID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context))
 	})
 	return _c
 }
 
-func (_c *Repository_GetSubsID_Call) Return(_a0 domain.Set) *Repository_GetSubsID_Call {
+func (_c *Repository_GetSubsID_Call) Return(_a0 *domain.Set) *Repository_GetSubsID_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *Repository_GetSubsID_Call) RunAndReturn(run func() domain.Set) *Repository_GetSubsID_Call {
+func (_c *Repository_GetSubsID_Call) RunAndReturn(run func(context.Context) *domain.Set) *Repository_GetSubsID_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetSubscription provides a mock function with given fields: subID
-func (_m *Repository) GetSubscription(subID int64) (domain.Subscription, error) {
-	ret := _m.Called(subID)
+// GetSubscription provides a mock function with given fields: ctx, subID
+func (_m *Repository) GetSubscription(ctx context.Context, subID int64) (*domain.Subscription, error) {
+	ret := _m.Called(ctx, subID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSubscription")
 	}
 
-	var r0 domain.Subscription
+	var r0 *domain.Subscription
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64) (domain.Subscription, error)); ok {
-		return rf(subID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*domain.Subscription, error)); ok {
+		return rf(ctx, subID)
 	}
-	if rf, ok := ret.Get(0).(func(int64) domain.Subscription); ok {
-		r0 = rf(subID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *domain.Subscription); ok {
+		r0 = rf(ctx, subID)
 	} else {
-		r0 = ret.Get(0).(domain.Subscription)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.Subscription)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(subID)
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, subID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -195,51 +202,52 @@ type Repository_GetSubscription_Call struct {
 }
 
 // GetSubscription is a helper method to define mock.On call
+//   - ctx context.Context
 //   - subID int64
-func (_e *Repository_Expecter) GetSubscription(subID interface{}) *Repository_GetSubscription_Call {
-	return &Repository_GetSubscription_Call{Call: _e.mock.On("GetSubscription", subID)}
+func (_e *Repository_Expecter) GetSubscription(ctx interface{}, subID interface{}) *Repository_GetSubscription_Call {
+	return &Repository_GetSubscription_Call{Call: _e.mock.On("GetSubscription", ctx, subID)}
 }
 
-func (_c *Repository_GetSubscription_Call) Run(run func(subID int64)) *Repository_GetSubscription_Call {
+func (_c *Repository_GetSubscription_Call) Run(run func(ctx context.Context, subID int64)) *Repository_GetSubscription_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64))
+		run(args[0].(context.Context), args[1].(int64))
 	})
 	return _c
 }
 
-func (_c *Repository_GetSubscription_Call) Return(_a0 domain.Subscription, _a1 error) *Repository_GetSubscription_Call {
+func (_c *Repository_GetSubscription_Call) Return(_a0 *domain.Subscription, _a1 error) *Repository_GetSubscription_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Repository_GetSubscription_Call) RunAndReturn(run func(int64) (domain.Subscription, error)) *Repository_GetSubscription_Call {
+func (_c *Repository_GetSubscription_Call) RunAndReturn(run func(context.Context, int64) (*domain.Subscription, error)) *Repository_GetSubscription_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetSubscriptionsForUser provides a mock function with given fields: tgChatID
-func (_m *Repository) GetSubscriptionsForUser(tgChatID int64) ([]domain.UserPreferences, error) {
-	ret := _m.Called(tgChatID)
+// GetSubscriptionsForUser provides a mock function with given fields: ctx, tgChatID
+func (_m *Repository) GetSubscriptionsForUser(ctx context.Context, tgChatID int64) ([]*domain.UserPreferences, error) {
+	ret := _m.Called(ctx, tgChatID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSubscriptionsForUser")
 	}
 
-	var r0 []domain.UserPreferences
+	var r0 []*domain.UserPreferences
 	var r1 error
-	if rf, ok := ret.Get(0).(func(int64) ([]domain.UserPreferences, error)); ok {
-		return rf(tgChatID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64) ([]*domain.UserPreferences, error)); ok {
+		return rf(ctx, tgChatID)
 	}
-	if rf, ok := ret.Get(0).(func(int64) []domain.UserPreferences); ok {
-		r0 = rf(tgChatID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64) []*domain.UserPreferences); ok {
+		r0 = rf(ctx, tgChatID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]domain.UserPreferences)
+			r0 = ret.Get(0).([]*domain.UserPreferences)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(tgChatID)
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, tgChatID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -253,39 +261,40 @@ type Repository_GetSubscriptionsForUser_Call struct {
 }
 
 // GetSubscriptionsForUser is a helper method to define mock.On call
+//   - ctx context.Context
 //   - tgChatID int64
-func (_e *Repository_Expecter) GetSubscriptionsForUser(tgChatID interface{}) *Repository_GetSubscriptionsForUser_Call {
-	return &Repository_GetSubscriptionsForUser_Call{Call: _e.mock.On("GetSubscriptionsForUser", tgChatID)}
+func (_e *Repository_Expecter) GetSubscriptionsForUser(ctx interface{}, tgChatID interface{}) *Repository_GetSubscriptionsForUser_Call {
+	return &Repository_GetSubscriptionsForUser_Call{Call: _e.mock.On("GetSubscriptionsForUser", ctx, tgChatID)}
 }
 
-func (_c *Repository_GetSubscriptionsForUser_Call) Run(run func(tgChatID int64)) *Repository_GetSubscriptionsForUser_Call {
+func (_c *Repository_GetSubscriptionsForUser_Call) Run(run func(ctx context.Context, tgChatID int64)) *Repository_GetSubscriptionsForUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64))
+		run(args[0].(context.Context), args[1].(int64))
 	})
 	return _c
 }
 
-func (_c *Repository_GetSubscriptionsForUser_Call) Return(_a0 []domain.UserPreferences, _a1 error) *Repository_GetSubscriptionsForUser_Call {
+func (_c *Repository_GetSubscriptionsForUser_Call) Return(_a0 []*domain.UserPreferences, _a1 error) *Repository_GetSubscriptionsForUser_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *Repository_GetSubscriptionsForUser_Call) RunAndReturn(run func(int64) ([]domain.UserPreferences, error)) *Repository_GetSubscriptionsForUser_Call {
+func (_c *Repository_GetSubscriptionsForUser_Call) RunAndReturn(run func(context.Context, int64) ([]*domain.UserPreferences, error)) *Repository_GetSubscriptionsForUser_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// RegisterUser provides a mock function with given fields: userID
-func (_m *Repository) RegisterUser(userID int64) error {
-	ret := _m.Called(userID)
+// RegisterUser provides a mock function with given fields: ctx, userID
+func (_m *Repository) RegisterUser(ctx context.Context, userID int64) error {
+	ret := _m.Called(ctx, userID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RegisterUser")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64) error); ok {
-		r0 = rf(userID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = rf(ctx, userID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -299,14 +308,15 @@ type Repository_RegisterUser_Call struct {
 }
 
 // RegisterUser is a helper method to define mock.On call
+//   - ctx context.Context
 //   - userID int64
-func (_e *Repository_Expecter) RegisterUser(userID interface{}) *Repository_RegisterUser_Call {
-	return &Repository_RegisterUser_Call{Call: _e.mock.On("RegisterUser", userID)}
+func (_e *Repository_Expecter) RegisterUser(ctx interface{}, userID interface{}) *Repository_RegisterUser_Call {
+	return &Repository_RegisterUser_Call{Call: _e.mock.On("RegisterUser", ctx, userID)}
 }
 
-func (_c *Repository_RegisterUser_Call) Run(run func(userID int64)) *Repository_RegisterUser_Call {
+func (_c *Repository_RegisterUser_Call) Run(run func(ctx context.Context, userID int64)) *Repository_RegisterUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64))
+		run(args[0].(context.Context), args[1].(int64))
 	})
 	return _c
 }
@@ -316,22 +326,22 @@ func (_c *Repository_RegisterUser_Call) Return(_a0 error) *Repository_RegisterUs
 	return _c
 }
 
-func (_c *Repository_RegisterUser_Call) RunAndReturn(run func(int64) error) *Repository_RegisterUser_Call {
+func (_c *Repository_RegisterUser_Call) RunAndReturn(run func(context.Context, int64) error) *Repository_RegisterUser_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// RemoveSubscription provides a mock function with given fields: userID, link
-func (_m *Repository) RemoveSubscription(userID int64, link string) error {
-	ret := _m.Called(userID, link)
+// RemoveSubscription provides a mock function with given fields: ctx, userID, link
+func (_m *Repository) RemoveSubscription(ctx context.Context, userID int64, link string) error {
+	ret := _m.Called(ctx, userID, link)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RemoveSubscription")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, string) error); ok {
-		r0 = rf(userID, link)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, string) error); ok {
+		r0 = rf(ctx, userID, link)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -345,15 +355,16 @@ type Repository_RemoveSubscription_Call struct {
 }
 
 // RemoveSubscription is a helper method to define mock.On call
+//   - ctx context.Context
 //   - userID int64
 //   - link string
-func (_e *Repository_Expecter) RemoveSubscription(userID interface{}, link interface{}) *Repository_RemoveSubscription_Call {
-	return &Repository_RemoveSubscription_Call{Call: _e.mock.On("RemoveSubscription", userID, link)}
+func (_e *Repository_Expecter) RemoveSubscription(ctx interface{}, userID interface{}, link interface{}) *Repository_RemoveSubscription_Call {
+	return &Repository_RemoveSubscription_Call{Call: _e.mock.On("RemoveSubscription", ctx, userID, link)}
 }
 
-func (_c *Repository_RemoveSubscription_Call) Run(run func(userID int64, link string)) *Repository_RemoveSubscription_Call {
+func (_c *Repository_RemoveSubscription_Call) Run(run func(ctx context.Context, userID int64, link string)) *Repository_RemoveSubscription_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64), args[1].(string))
+		run(args[0].(context.Context), args[1].(int64), args[2].(string))
 	})
 	return _c
 }
@@ -363,22 +374,22 @@ func (_c *Repository_RemoveSubscription_Call) Return(_a0 error) *Repository_Remo
 	return _c
 }
 
-func (_c *Repository_RemoveSubscription_Call) RunAndReturn(run func(int64, string) error) *Repository_RemoveSubscription_Call {
+func (_c *Repository_RemoveSubscription_Call) RunAndReturn(run func(context.Context, int64, string) error) *Repository_RemoveSubscription_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// UpdateSubscription provides a mock function with given fields: subID, newSub
-func (_m *Repository) UpdateSubscription(subID int64, newSub *domain.Subscription) error {
-	ret := _m.Called(subID, newSub)
+// UpdateSubscription provides a mock function with given fields: ctx, subID, newSub
+func (_m *Repository) UpdateSubscription(ctx context.Context, subID int64, newSub *domain.Subscription) error {
+	ret := _m.Called(ctx, subID, newSub)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateSubscription")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, *domain.Subscription) error); ok {
-		r0 = rf(subID, newSub)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, *domain.Subscription) error); ok {
+		r0 = rf(ctx, subID, newSub)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -392,15 +403,16 @@ type Repository_UpdateSubscription_Call struct {
 }
 
 // UpdateSubscription is a helper method to define mock.On call
+//   - ctx context.Context
 //   - subID int64
 //   - newSub *domain.Subscription
-func (_e *Repository_Expecter) UpdateSubscription(subID interface{}, newSub interface{}) *Repository_UpdateSubscription_Call {
-	return &Repository_UpdateSubscription_Call{Call: _e.mock.On("UpdateSubscription", subID, newSub)}
+func (_e *Repository_Expecter) UpdateSubscription(ctx interface{}, subID interface{}, newSub interface{}) *Repository_UpdateSubscription_Call {
+	return &Repository_UpdateSubscription_Call{Call: _e.mock.On("UpdateSubscription", ctx, subID, newSub)}
 }
 
-func (_c *Repository_UpdateSubscription_Call) Run(run func(subID int64, newSub *domain.Subscription)) *Repository_UpdateSubscription_Call {
+func (_c *Repository_UpdateSubscription_Call) Run(run func(ctx context.Context, subID int64, newSub *domain.Subscription)) *Repository_UpdateSubscription_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64), args[1].(*domain.Subscription))
+		run(args[0].(context.Context), args[1].(int64), args[2].(*domain.Subscription))
 	})
 	return _c
 }
@@ -410,22 +422,22 @@ func (_c *Repository_UpdateSubscription_Call) Return(_a0 error) *Repository_Upda
 	return _c
 }
 
-func (_c *Repository_UpdateSubscription_Call) RunAndReturn(run func(int64, *domain.Subscription) error) *Repository_UpdateSubscription_Call {
+func (_c *Repository_UpdateSubscription_Call) RunAndReturn(run func(context.Context, int64, *domain.Subscription) error) *Repository_UpdateSubscription_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// UpdateSubscriptionActivity provides a mock function with given fields: subID, newActivity
-func (_m *Repository) UpdateSubscriptionActivity(subID int64, newActivity domain.Activity) error {
-	ret := _m.Called(subID, newActivity)
+// UpdateSubscriptionActivity provides a mock function with given fields: ctx, subID, newActivity
+func (_m *Repository) UpdateSubscriptionActivity(ctx context.Context, subID int64, newActivity domain.Activity) error {
+	ret := _m.Called(ctx, subID, newActivity)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateSubscriptionActivity")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, domain.Activity) error); ok {
-		r0 = rf(subID, newActivity)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, domain.Activity) error); ok {
+		r0 = rf(ctx, subID, newActivity)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -439,15 +451,16 @@ type Repository_UpdateSubscriptionActivity_Call struct {
 }
 
 // UpdateSubscriptionActivity is a helper method to define mock.On call
+//   - ctx context.Context
 //   - subID int64
 //   - newActivity domain.Activity
-func (_e *Repository_Expecter) UpdateSubscriptionActivity(subID interface{}, newActivity interface{}) *Repository_UpdateSubscriptionActivity_Call {
-	return &Repository_UpdateSubscriptionActivity_Call{Call: _e.mock.On("UpdateSubscriptionActivity", subID, newActivity)}
+func (_e *Repository_Expecter) UpdateSubscriptionActivity(ctx interface{}, subID interface{}, newActivity interface{}) *Repository_UpdateSubscriptionActivity_Call {
+	return &Repository_UpdateSubscriptionActivity_Call{Call: _e.mock.On("UpdateSubscriptionActivity", ctx, subID, newActivity)}
 }
 
-func (_c *Repository_UpdateSubscriptionActivity_Call) Run(run func(subID int64, newActivity domain.Activity)) *Repository_UpdateSubscriptionActivity_Call {
+func (_c *Repository_UpdateSubscriptionActivity_Call) Run(run func(ctx context.Context, subID int64, newActivity domain.Activity)) *Repository_UpdateSubscriptionActivity_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(int64), args[1].(domain.Activity))
+		run(args[0].(context.Context), args[1].(int64), args[2].(domain.Activity))
 	})
 	return _c
 }
@@ -457,7 +470,7 @@ func (_c *Repository_UpdateSubscriptionActivity_Call) Return(_a0 error) *Reposit
 	return _c
 }
 
-func (_c *Repository_UpdateSubscriptionActivity_Call) RunAndReturn(run func(int64, domain.Activity) error) *Repository_UpdateSubscriptionActivity_Call {
+func (_c *Repository_UpdateSubscriptionActivity_Call) RunAndReturn(run func(context.Context, int64, domain.Activity) error) *Repository_UpdateSubscriptionActivity_Call {
 	_c.Call.Return(run)
 	return _c
 }

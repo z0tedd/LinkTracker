@@ -8,6 +8,12 @@ packages:
   #     dir: pkg/mocks
   #   interfaces:
   #     ClientWithResponsesInterface:
+  github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common:
+    config:
+      dir: pkg/mocks/common
+      outpkg: mockHTTPRequestDoer
+    interfaces:
+      HTTPRequestDoer:
 
   github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/github:
     config:
