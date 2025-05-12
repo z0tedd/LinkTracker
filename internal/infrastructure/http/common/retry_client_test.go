@@ -6,21 +6,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
+
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
 )
 
+//nolint:bodyclose // i don't need to close request, because client do this
 func TestHTTPClientWithRetry_RetryOnServerError(t *testing.T) {
 	attempts := 0
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		attempts++
-		if attempts == 1 {
+		switch attempts {
+		case 1:
 			w.WriteHeader(http.StatusInternalServerError) // 500
-		} else if attempts == 2 {
+		case 2:
 			w.WriteHeader(http.StatusServiceUnavailable) // 503
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 		}
 	}))
@@ -28,7 +31,7 @@ func TestHTTPClientWithRetry_RetryOnServerError(t *testing.T) {
 
 	client := common.NewHTTPClientWithRetry(1*time.Second, rate.Limit(10), 1, 2, 100*time.Millisecond)
 
-	req, _ := http.NewRequest("GET", ts.URL, nil)
+	req, _ := http.NewRequest("GET", ts.URL, http.NoBody)
 	resp, err := client.Do(req)
 
 	require.NoError(t, err)
@@ -36,18 +39,20 @@ func TestHTTPClientWithRetry_RetryOnServerError(t *testing.T) {
 	require.Equal(t, 3, attempts) // 1st failed → retry → success
 }
 
+//nolint:bodyclose // i don't need to close request, because client do this
 func TestHTTPClientWithRetry_NoRetryOnClientError(t *testing.T) {
 	attempts := 0
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		attempts++
+
 		w.WriteHeader(http.StatusBadRequest) // 400
 	}))
 	defer ts.Close()
 
 	client := common.NewHTTPClientWithRetry(1*time.Second, rate.Limit(10), 1, 2, 100*time.Millisecond)
 
-	req, _ := http.NewRequest("GET", ts.URL, nil)
+	req, _ := http.NewRequest("GET", ts.URL, http.NoBody)
 	resp, err := client.Do(req)
 
 	require.Error(t, err)

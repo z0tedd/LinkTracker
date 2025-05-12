@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/central-university-dev/go-z0tedd/internal/config"
-	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
+
+	"github.com/central-university-dev/go-z0tedd/internal/config"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
 )
 
 func TestRateLimitMiddleware(t *testing.T) {
@@ -27,7 +28,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 		return c.String(http.StatusOK, "OK")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/limited", nil)
+	req := httptest.NewRequest(http.MethodGet, "/limited", http.NoBody)
 	rec := httptest.NewRecorder()
 
 	// Первые два запроса — первый OK, второй должен быть заблокирован
