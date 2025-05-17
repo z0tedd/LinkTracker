@@ -83,6 +83,12 @@ services:
     ports:
       - "9092:9092"
       - "9093:9093"
+    command:
+      [
+        "bash",
+        "-c",
+        "/etc/confluent/docker/run >/log/stdout.log 2>/log/stderr.log",
+      ]
     environment:
       KAFKA_KRAFT_MODE: "true"
       KAFKA_PROCESS_ROLES: controller,broker
@@ -101,9 +107,78 @@ services:
       CLUSTER_ID: "Mk3OEYBSD34fcwNTJENDM2Qk"
     volumes:
       - ./kafka/data:/var/lib/kafka/data
+      - ./kafka/log:/log
     networks:
       - kafka-network
 
+  grafana:
+    user: "root"
+    depends_on:
+      - postgres
+    image: "grafana/grafana-oss:latest"
+    ports:
+      - 2005:3000
+    volumes:
+      # touch ./grafana/config/grafana.ini;
+      # mkdir -p ./grafana/{config,data};
+      - ./grafana/config:/etc/grafana
+      - ./grafana/data:/var/lib/grafana
+    environment:
+      # Uncomment GF_SERVER_DOMAIN, GF_SERVER_ROOT_URL for using reserve proxy
+      #GF_SERVER_DOMAIN: "grafana.domain.example" # change "grafana.domain.example" to your domain
+      #GF_SERVER_ROOT_URL: "https://grafana.domain.example/" # change "grafana.domain.example" to your domain
+      # GF_RENDERING_SERVER_URL: "http://grafana-image-renderer:8081/render"
+      GF_RENDERING_CALLBACK_URL: "http://grafana:3000/"
+      # GF_UNIFIED_ALERTING_SCREENSHOTS_CAPTURE: "true"
+      GF_LOG_FILTERS: "rendering:debug"
+      # Uncomment for using PostgreSQL (recommended) instead SQLite
+      GF_DATABASE_TYPE: "postgres"
+      GF_DATABASE_HOST: "postgres:5432" # change "postgres:5432" to your PostgreSQL database host and port
+      GF_DATABASE_NAME: ${POSTGRES_DB} # change "postgres" to your database name
+      GF_DATABASE_USER: ${POSTGRES_USER} # change "postgres" to your database user name
+      GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD} # change "postgres" to your database password # or use GF_DATABASE_PASSWORD
+      #GF_DATABASE_PASSWORD__FILE: "/run/secrets/grafana_database_password" # for docker secrets # or use GF_DATABASE_PASSWORD
+      #GF_DATABASE_SSL_MODE: "disable"
+    # Uncomment for using docker secrets
+    #secrets:
+    #  - grafana_database_password
+    # deploy:
+    #   mode: replicated
+    #   replicas: 1
+    #   update_config:
+    #     order: stop-first
+    #   resources:
+    #     limits:
+    #       memory: 1024M
+    #
+    networks:
+      - postgres-network
+      - prometheus-network
+  prometheus:
+    image: "prom/prometheus:latest"
+    ports:
+      - 9090:9090
+    volumes:
+      # touch /mnt/common_volume/swarm/grafana/config/{prometheus.yaml,web-config.yaml};
+      # mkdir -p /mnt/common_volume/grafana/prometheus-data
+      - ./prometheus/config/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - ./prometheus/data:/prometheus
+    user: "root"
+    # Uncomment for using docker secrets
+    #secrets:
+    #  - node_exporter_password
+    #  - grafana_prometheus_password
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+      - "--storage.tsdb.retention.time=7d"
+    networks:
+      - prometheus-network
+  node-exporter:
+    image: prom/node-exporter
+    networks:
+      - prometheus-network
+    ports:
+      - 9100:9100
 volumes:
   .pgdata:
     driver: local
@@ -114,3 +189,4 @@ networks:
     # driver: host
   postgres-network:
     # driver: bridge
+  prometheus-network:

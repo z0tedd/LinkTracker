@@ -113,7 +113,7 @@ func (h *GroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim s
 			}
 			// Doesn't check successes and errors channel, because there is no sense in processing data from DLQ
 			h.producer.Input() <- &sarama.ProducerMessage{
-				Topic:   "DLQ",
+				Topic:   "DLQ", // TODO: replace to config
 				Headers: records,
 				Value:   sarama.ByteEncoder(message.Value),
 			}
