@@ -26,6 +26,9 @@ type Config struct {
 	SlidingWindowDuration         time.Duration `env:"SLIDING_WINDOW_DURATION" envDefault:"1s"`
 	WaitDurationInOpenState       time.Duration `env:"WAIT_DURATION_IN_OPEN_STATE" envDefault:"1s"`
 	FailureRateThreshold          uint          `env:"FAILURE_RATE_THRESHOLD" envDefault:"70"`
+	MetricsName                   string        `env:"METRICS_NAME" envDefault:"myapp"`
+	ScrapperPrometheusPort        string        `env:"SCRAPPER_PROMETHEUS_PORT" envDefault:"8079"`
+	BotPrometheusPort             string        `env:"BOT_PROMETHEUS_PORT" envDefault:"8078"`
 
 	// slidingWindowSize = 1
 	//  minimumRequiredCalls = 1

@@ -122,7 +122,8 @@ func (h *GroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim s
 		}
 
 		for _, userID := range encodedMessage.TgChatIDs {
-			err := helpers.SendMessage(h.tgAPI, userID, fmt.Sprintf("New update from your subcribed link: %s", encodedMessage.URL))
+			err := helpers.SendMessage(h.tgAPI, userID, fmt.Sprintf("New update from your subcribed link: %s\n Description: %s",
+				encodedMessage.URL, encodedMessage.Description))
 			if err != nil {
 				h.logger.Error("Sending message", slog.Any("error", err.Error()))
 			}

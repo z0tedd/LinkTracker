@@ -1,4 +1,4 @@
-package common_test
+package middleware_test
 
 import (
 	"net/http"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/central-university-dev/go-z0tedd/internal/config"
-	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common/middleware"
 )
 
 func TestRateLimitMiddleware(t *testing.T) {
@@ -21,7 +21,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	}
 
 	e := echo.New()
-	common.SetupRateLimitMiddleware(e, cfg)
+	middleware.SetupRateLimitMiddleware(e, cfg)
 
 	// Мокаем обработчик
 	e.GET("/limited", func(c echo.Context) error {

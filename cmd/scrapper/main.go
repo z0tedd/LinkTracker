@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
+	"log"
 	"log/slog"
+	"net/http"
 	"os"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/go-co-op/gocron/v2"
+	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
 
 	unimplemented_server "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/scrapper/server"
@@ -15,7 +19,7 @@ import (
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/notification"
 	"github.com/central-university-dev/go-z0tedd/internal/application/scrapper/server"
 	"github.com/central-university-dev/go-z0tedd/internal/config"
-	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common/middleware"
 	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/repository"
 )
 
@@ -80,7 +84,13 @@ func main() {
 	}
 
 	scheduler.Start()
-
+	go func() {
+		metrics := echo.New()                                // this Echo will run on separate port 8081
+		metrics.GET("/metrics", echoprometheus.NewHandler()) // adds route to serve gathered metrics
+		if err := metrics.Start(":" + cfg.ScrapperPrometheusPort); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal(err)
+		}
+	}()
 	e := echo.New()
 
 	// Create an instance of your server implementation
@@ -89,7 +99,8 @@ func main() {
 	// Register the handlers with the Echo router
 	unimplemented_server.RegisterHandlers(e, myServer)
 
-	common.SetupRateLimitMiddleware(e, cfg)
+	middleware.SetupRateLimitMiddleware(e, cfg)
+	middleware.SetupMetricsMiddleware(e, cfg)
 	// Start the server
 	e.Logger.Fatal(e.Start(":8080"))
 }

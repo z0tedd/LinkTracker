@@ -12,7 +12,7 @@ import (
 
 	unimplemented_server "github.com/central-university-dev/go-z0tedd/internal/api/openapi/v1/bot_api/server"
 	"github.com/central-university-dev/go-z0tedd/internal/config"
-	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common"
+	"github.com/central-university-dev/go-z0tedd/internal/infrastructure/http/common/middleware"
 	"github.com/central-university-dev/go-z0tedd/pkg"
 )
 
@@ -108,7 +108,8 @@ func (s *NotificationServer) runKafkaServer(ctx context.Context) {
 
 func (s *NotificationServer) prepareHTTPServer() *echo.Echo {
 	e := echo.New()
-	common.SetupRateLimitMiddleware(e, s.cfg)
+	middleware.SetupRateLimitMiddleware(e, s.cfg)
+	middleware.SetupMetricsMiddleware(e, s.cfg)
 	botServer := NewHTTPBotServer(s.botAPI, s.logger)
 	unimplemented_server.RegisterHandlers(e, botServer)
 

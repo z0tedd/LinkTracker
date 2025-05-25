@@ -12,7 +12,8 @@ bin
 pgadmin-data
 /redis/data/*
 /kafka/data/*
-
+/prometheus/data/*
+/grafana/data/*
 # Test binary, built with `go test -c`
 *.test
 
