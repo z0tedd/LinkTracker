@@ -179,6 +179,54 @@ services:
       - prometheus-network
     ports:
       - 9100:9100
+
+  bot:
+    container_name: bot_service
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: bot.Dockerfile
+    restart: unless-stopped
+    ports:
+      - 8078:8078 # optional, if your bot exposes an HTTP server
+      - 8081:8081
+    # environment:
+    #   POSTGRES_USER: ${POSTGRES_USER}
+    #   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    #   POSTGRES_DB: ${POSTGRES_DB}
+    #   POSTGRES_HOST: postgres
+    #   POSTGRES_PORT: 5432
+    #   REDIS_PASSWORD: ${REDIS_PASSWORD}
+    #   KAFKA_BROKERS: kafka:9092
+    # Add any other required env vars here
+    networks:
+      - postgres-network
+      - kafka-network
+  # TODO: Покапаться с настройками подсетей
+  scrapper:
+    container_name: scrapper
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: scrapper.Dockerfile
+    restart: unless-stopped
+    ports:
+      - 8079:8079 # optional, if your bot exposes an HTTP server
+      - 8080:8080
+    # environment:
+    #   POSTGRES_USER: ${POSTGRES_USER}
+    #   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    #   POSTGRES_DB: ${POSTGRES_DB}
+    #   POSTGRES_HOST: postgres
+    #   POSTGRES_PORT: 5432
+    #   REDIS_PASSWORD: ${REDIS_PASSWORD}
+    #   KAFKA_BROKERS: kafka:9092
+    # Add any other required env vars here
+    networks:
+      - postgres-network
+      - kafka-network
 volumes:
   .pgdata:
     driver: local

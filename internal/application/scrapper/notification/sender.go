@@ -38,23 +38,28 @@ func NewSender(cfg *config.Config, logger *slog.Logger) (Sender, error) {
 }
 
 func NewSenderWithFallback(cfg *config.Config, logger *slog.Logger) (Sender, error) {
-	kafkaSender, err := NewKafkaNotificationSender(cfg, logger)
-	if err != nil {
-		return nil, err
-	}
-
+	kafkaSender, errKafka := NewKafkaNotificationSender(cfg, logger)
 	// Set up HTTP as fallback
-	httpSender, err := NewHTTPNotificationSender(cfg.BotBaseURL, logger, cfg)
-	if err != nil {
-		return nil, err
+	httpSender, errHTTP := NewHTTPNotificationSender(cfg.BotBaseURL, logger, cfg)
+	if errKafka != nil && errHTTP != nil {
+		return nil, fmt.Errorf("all connections are broken: %w ; %w", errHTTP, errKafka)
 	}
 
 	switch cfg.MessageTransportType {
 	case pkg.TransportTypeHTTP:
-		return NewFallbackSender(logger, httpSender, kafkaSender), nil
+		if errKafka == nil && errHTTP == nil {
+			return NewFallbackSender(logger, httpSender, kafkaSender), nil
+		}
+
+		return NewFallbackSender(logger, httpSender), nil
 
 	case pkg.TransportTypeKafka:
-		return NewFallbackSender(logger, kafkaSender, httpSender), nil
+		if errKafka == nil && errHTTP == nil {
+			return NewFallbackSender(logger, kafkaSender, httpSender), nil
+		}
+
+		return NewFallbackSender(logger, httpSender), nil
+
 	default:
 		return NewFallbackSender(logger, httpSender, kafkaSender), nil
 	}
