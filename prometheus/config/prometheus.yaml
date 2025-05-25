@@ -9,3 +9,13 @@ scrape_configs:
     static_configs:
       - targets:
           - node-exporter:9100
+
+  - job_name: scrapper
+    static_configs:
+      - targets:
+          - host.docker.internal:8079
+
+  - job_name: bot
+    static_configs:
+      - targets:
+          - host.docker.internal:8078
