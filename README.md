@@ -2,51 +2,6 @@
 
 <!-- markdownlint-disable -->
 
-## Как запустить
-
-1. Склонируйте репозиторий:
-
-```bash
-git clone <repository_url>
-```
-
-2. Cоздайте .env файл:
-
-```
-TELEGRAM_BOT_TOKEN=<your_key>
-```
-
-3. Получите все зависимости:
-
-```bash
-go mod download
-```
-
-4. Убедитесь, что свободны порты 8080, 8081:
-
-```bash
-netstat -tuln | grep -E '(:8080|:8081)\s'
-```
-
-Вывод пустой, значит порты свободны.
-
-5. Запустите скраппер
-
-```bash
-go run cmd/scrapper/main.go
-```
-
-6. Запустите бота
-
-```bash
-export $(cat .env)
-go run cmd/scrapper/main.go
-```
-
-7. Наслаждайтесь
-
-# README
-
 ## 🌟 Overview
 
 **go-z0tedd** is a Go-based project designed to manage and process links, tags, and user activities through a modular architecture. It integrates with external services like GitHub and Stack Overflow, provides a bot interface, and includes robust features such as configuration management, state persistence with Redis, metrics collection, and comprehensive testing.
