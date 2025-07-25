@@ -4,7 +4,7 @@
 
 ## 🌟 Overview
 
-**go-z0tedd** is a Go-based project designed to manage and process links, tags, and user activities through a modular architecture. It integrates with external services like GitHub and Stack Overflow, provides a bot interface, and includes robust features such as configuration management, state persistence with Redis, metrics collection, and comprehensive testing.
+**LinkTracker** is a Go-based project designed to manage and process links, tags, and user activities through a modular architecture. It integrates with external services like GitHub and Stack Overflow, provides a bot interface, and includes robust features such as configuration management, state persistence with Redis, metrics collection, and comprehensive testing.
 
 This repository contains a microservices-style application with components for scraping, notification, API handling, and more — all orchestrated via Docker and built with extensibility in mind.
 
@@ -32,7 +32,7 @@ This repository contains a microservices-style application with components for s
 The project follows a clean, layered structure:
 
 ```
-go-z0tedd/
+LinkTracker/
 ├── api/                   # OpenAPI specs and Protobuf definitions
 ├── cmd/                   # Main applications (bot, service, etc.)
 ├── internal/              # Core business logic
